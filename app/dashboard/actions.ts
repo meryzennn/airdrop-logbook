@@ -9,7 +9,7 @@ function getAirdropDataFromForm(formData: FormData) {
     chain: formData.get("chain") as string,
     tokenTicker: (formData.get("tokenTicker") as string) || null,
     wallet: (formData.get("wallet") as string) || null,
-    websiteLink: (formData.get("websiteLink") as string) || null, // <-- BARU
+    websiteLink: (formData.get("websiteLink") as string) || null,
     xHandle: (formData.get("xHandle") as string) || null,
     telegram: (formData.get("telegram") as string) || null,
     contactEmail: (formData.get("contactEmail") as string) || null,
@@ -17,9 +17,7 @@ function getAirdropDataFromForm(formData: FormData) {
   };
 }
 
-// --- AIRDROP MANAGEMENT ACTIONS ---
-
-// 1. Action to Create a new Airdrop entry with full details
+// 1) Create
 export async function createAirdrop(formData: FormData, userId: string) {
   const data = getAirdropDataFromForm(formData);
   await prisma.airdrop.create({
@@ -28,7 +26,7 @@ export async function createAirdrop(formData: FormData, userId: string) {
   revalidatePath("/dashboard");
 }
 
-// 2. Action to Update an existing Airdrop entry
+// 2) Update
 export async function updateAirdrop(
   formData: FormData,
   userId: string,
@@ -36,13 +34,13 @@ export async function updateAirdrop(
 ) {
   const data = getAirdropDataFromForm(formData);
   await prisma.airdrop.update({
-    where: { id: airdropId, userId }, // Security: ensuring user owns the entry
-    data: data,
+    where: { id: airdropId, userId },
+    data,
   });
   revalidatePath("/dashboard");
 }
 
-// 3. Action to toggle DONE / IN_PROGRESS
+// 3) Toggle DONE / IN_PROGRESS
 export async function toggleDoneStatus(id: string, currentStatus: string) {
   const newStatus = currentStatus === "DONE" ? "IN_PROGRESS" : "DONE";
   await prisma.airdrop.update({
@@ -59,26 +57,34 @@ export async function markAsLanded(id: string, dollarValue: number) {
     data: {
       status: "LANDED",
       landedValue: dollarValue,
+      landedAt: new Date(),
+      ruggedAt: null,
     },
   });
   revalidatePath("/dashboard");
+  revalidatePath("/dashboard/analytics");
 }
 
 // 5. Action to Mark as Rugged / Zonked 💀
 export async function markAsRugged(id: string) {
   await prisma.airdrop.update({
     where: { id },
-    data: { status: "RUGGED" },
-  });
-  revalidatePath("/dashboard");
-}
-
-// 6. Action for Bulk Delete (Hapus banyak sekaligus)
-export async function deleteAirdrops(ids: string[]) {
-  await prisma.airdrop.deleteMany({
-    where: {
-      id: { in: ids },
+    data: {
+      status: "RUGGED",
+      ruggedAt: new Date(),
+      landedAt: null,
+      landedValue: null,
     },
   });
   revalidatePath("/dashboard");
+  revalidatePath("/dashboard/analytics");
+}
+
+// 6) Bulk delete
+export async function deleteAirdrops(ids: string[]) {
+  await prisma.airdrop.deleteMany({
+    where: { id: { in: ids } },
+  });
+  revalidatePath("/dashboard");
+  revalidatePath("/dashboard/analytics");
 }

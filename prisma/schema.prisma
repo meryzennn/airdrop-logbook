@@ -12,7 +12,7 @@ model User {
   id            String    @id @default(cuid())
   name          String?
   email         String?   @unique
-  emailVerified DateTime? // <-- Tambahkan baris ini
+  emailVerified DateTime?
   image         String?
   accounts      Account[]
   sessions      Session[]
@@ -33,6 +33,7 @@ model Account {
   id_token          String? @db.Text
   session_state     String?
   user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@unique([provider, providerAccountId])
 }
 
@@ -47,19 +48,34 @@ model Session {
 model Airdrop {
   id           String   @id @default(cuid())
   userId       String
+
   airdropName  String
   chain        String
   tokenTicker  String?
   landedValue  Float?
-  taskDate     DateTime @default(now())
+
+  taskDate     DateTime @default(now()) // tanggal yg kamu isi di form (taskDate)
+
   wallet       String?
-  websiteLink  String?  // <-- BARU: Buat nyimpen link project
+  websiteLink  String?
   xHandle      String?
   telegram     String?
   contactEmail String?
   description  String?
+
   status       Status   @default(PLANNED)
+
+  // --- analytics timestamps ---
+  createdAt    DateTime @default(now())   // kapan entry dibuat
+  updatedAt    DateTime @updatedAt        // kapan terakhir update
+  landedAt     DateTime?                  // kapan status jadi LANDED
+  ruggedAt     DateTime?                  // kapan status jadi RUGGED
+
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, status])
+  @@index([userId, createdAt])
 }
 
 enum Status {
