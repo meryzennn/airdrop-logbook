@@ -1,0 +1,74 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// --- Model Auth.js Wajib ---
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime? // <-- Tambahkan baris ini
+  image         String?
+  accounts      Account[]
+  sessions      Session[]
+  airdrops      Airdrop[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// Tambahkan di dalam file schema.prisma lu
+
+model Airdrop {
+  id           String   @id @default(cuid())
+  userId       String
+  airdropName  String
+  chain        String
+  tokenTicker  String?  // <-- BARU: Buat nyimpen nama coin (misal: $RYZEN, $ETH)
+  landedValue  Float?   // <-- BARU: Buat nyimpen dapet berapa dollar pas landing
+  taskDate     DateTime @default(now())
+  wallet       String?
+  xHandle      String?  // (Udah ada) Buat nyimpen Twitter waitlist
+  telegram     String?  // (Udah ada) Buat nyimpen Telegram waitlist
+  contactEmail String?  // (Udah ada) Buat nyimpen Email waitlist
+  description  String?
+  status       Status   @default(PLANNED)
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// Tambahin status RUGGED di paling bawah
+enum Status {
+  PLANNED
+  IN_PROGRESS
+  DONE
+  LANDED
+  ARCHIVED
+  RUGGED  // <-- BARU: Buat project kampret yang ga landing / scam
+}
