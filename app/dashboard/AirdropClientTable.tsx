@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import styled from "styled-components";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { NeonToggle } from "@/components/ui/NeonToggle";
 import { UiverseCheckbox } from "@/components/ui/UiverseCheckbox";
@@ -14,41 +15,72 @@ import {
 } from "./actions";
 import {
   Wallet,
-  Twitter,
   Send,
   Mail,
   Search,
   Edit,
   Trash2,
-  CalendarDays,
   BarChart3,
   Grip,
   Banknote,
   Skull,
+  Globe,
+  AlertTriangle,
 } from "lucide-react";
 import { DetailModal } from "./DetailModal";
 import { EditModal } from "./EditModal";
+import AddAirdropModal from "./AddAirdropModal";
 
-type Airdrop = {
-  id: string;
-  airdropName: string;
-  chain: string;
-  tokenTicker: string | null;
-  landedValue: number | null;
-  taskDate: Date;
-  status: string;
-  wallet: string | null;
-  xHandle: string | null;
-  telegram: string | null;
-  contactEmail: string | null;
-  description: string | null;
-};
+const StyledHamburger = styled.div`
+  .hamburger {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .hamburger input {
+    display: none;
+  }
+  .hamburger svg {
+    height: 2.2em;
+    transition: transform 600ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .line {
+    fill: none;
+    stroke: #e4e4e7;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 3;
+    transition:
+      stroke-dasharray 600ms cubic-bezier(0.4, 0, 0.2, 1),
+      stroke-dashoffset 600ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .line-top-bottom {
+    stroke-dasharray: 12 63;
+  }
+  .hamburger input:checked + svg {
+    transform: rotate(-45deg);
+  }
+  .hamburger input:checked + svg .line-top-bottom {
+    stroke-dasharray: 20 300;
+    stroke-dashoffset: -32.42;
+  }
+  .hamburger:hover .line {
+    stroke: #10b981;
+  }
+`;
+
+const XLogo = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932ZM17.61 20.644h2.039L6.486 3.24H4.298Z" />
+  </svg>
+);
 
 export default function AirdropClientTable({
   airdrops,
   userId,
 }: {
-  airdrops: Airdrop[];
+  airdrops: any[];
   userId: string;
 }) {
   const [isPending, startTransition] = useTransition();
@@ -56,35 +88,30 @@ export default function AirdropClientTable({
   const itemsPerPage = 10;
 
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
+  const [showRuggedOverlay, setShowRuggedOverlay] = useState(false);
+  const [showLandedOverlay, setShowLandedOverlay] = useState(false);
   const [landingModalOpen, setLandingModalOpen] = useState(false);
   const [selectedAirdropId, setSelectedAirdropId] = useState("");
   const [dollarInput, setDollarInput] = useState("");
-
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
-  const [selectedAirdropData, setSelectedAirdropData] =
-    useState<Airdrop | null>(null);
+  const [selectedAirdropData, setSelectedAirdropData] = useState<any | null>(
+    null,
+  );
 
   const totalPages = Math.ceil(airdrops.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const currentData = airdrops.slice(startIndex, startIndex + itemsPerPage);
+  const currentData = airdrops.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage,
+  );
 
-  const toggleSelect = (id: string) =>
-    setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id],
-    );
-  const toggleSelectAll = () =>
-    selectedIds.length === currentData.length
-      ? setSelectedIds([])
-      : setSelectedIds(currentData.map((item) => item.id));
-
-  const handleDeleteSelected = () => {
-    if (confirm(`Yakin mau hapus ${selectedIds.length} data ini bro?`)) {
-      startTransition(() => {
-        deleteAirdrops(selectedIds);
-        setSelectedIds([]);
-      });
-    }
+  const handleRuggedAction = (id: string) => {
+    setShowRuggedOverlay(true);
+    setActiveMenuId(null);
+    startTransition(() => markAsRugged(id));
+    setTimeout(() => setShowRuggedOverlay(false), 5000);
   };
 
   const handleLandedSubmit = (e: React.FormEvent) => {
@@ -93,218 +120,233 @@ export default function AirdropClientTable({
       markAsLanded(selectedAirdropId, Number(dollarInput));
       setLandingModalOpen(false);
       setDollarInput("");
+      setActiveMenuId(null);
+      setShowLandedOverlay(true);
+      setTimeout(() => setShowLandedOverlay(false), 5000);
     });
   };
 
-  if (airdrops.length === 0) {
+  if (airdrops.length === 0)
     return (
-      <GlassCard className="text-center p-12">
-        <p className="text-zinc-500 dark:text-zinc-400 font-medium">
-          No targets tracked yet. Click the button above to add a real entry!
+      <GlassCard className="p-12 text-center border-dashed border-zinc-800">
+        <AddAirdropModal userId={userId} />
+        <p className="mt-4 text-zinc-500 font-bold uppercase tracking-widest">
+          No Logs Found
         </p>
       </GlassCard>
     );
-  }
 
   return (
-    <div className="space-y-4 relative">
-      {/* Top Bar: Bulk Actions & Pagination */}
-      <div className="flex flex-col sm:flex-row gap-4 sm:gap-0 justify-between items-center px-2">
-        <button
-          onClick={handleDeleteSelected}
-          disabled={selectedIds.length === 0 || isPending}
-          className="group flex items-center gap-2 px-5 py-2 text-xs font-black text-red-500 bg-red-500/10 border border-red-500/30 rounded-lg hover:bg-red-500 hover:text-white transition-all duration-300 disabled:opacity-30 disabled:cursor-not-allowed hover:shadow-[0_0_20px_rgba(239,68,68,0.5)] active:scale-95"
-        >
-          <Trash2 className="w-4 h-4" /> HAPUS TERPILIH ({selectedIds.length})
-        </button>
-        <div className="text-xs font-bold text-zinc-500 dark:text-zinc-400">
-          PAGE {currentPage} OF {totalPages || 1}
+    <div className="space-y-6 relative font-sans">
+      <div className="flex justify-between items-center px-2">
+        <div className="flex items-center gap-3">
+          <AddAirdropModal userId={userId} />
+          <button
+            onClick={() => setDeleteModalOpen(true)}
+            disabled={selectedIds.length === 0 || isPending}
+            className="px-5 h-12 bg-zinc-900 border border-red-500/20 text-red-500 font-black rounded-xl text-[11px] tracking-widest hover:bg-red-500 hover:text-white transition-all disabled:opacity-30"
+          >
+            DELETE ({selectedIds.length})
+          </button>
+        </div>
+        {/* Page counter at top */}
+        <div className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em]">
+          LOGS PAGE {currentPage} OF {totalPages || 1}
         </div>
       </div>
 
-      {/* --- DESKTOP TABLE VIEW --- */}
+      {/* Desktop Table View - STRICT GEOMETRY */}
       <div className="hidden md:block">
-        <GlassCard className="overflow-x-auto p-0 border border-zinc-200 dark:border-zinc-800/80">
-          <table className="w-full text-left border-collapse table-fixed min-w-[1000px]">
+        <GlassCard className="overflow-hidden border border-zinc-200 dark:border-zinc-800/80 shadow-lg p-0">
+          <table className="w-full text-left border-collapse table-fixed min-w-full">
             <thead>
-              {/* FIX: Hapus background putih/abu-abu, dibikin transparan polos aja biar nyatu */}
               <tr className="border-b border-zinc-200 dark:border-zinc-800 text-[10px] uppercase tracking-widest text-zinc-500 dark:text-zinc-400">
-                <th className="p-5 w-[5%] text-center">
+                <th className="p-5 w-[60px] text-center">
                   <UiverseCheckbox
-                    checked={
-                      selectedIds.length === currentData.length &&
-                      currentData.length > 0
+                    checked={selectedIds.length === currentData.length}
+                    onChange={() =>
+                      selectedIds.length === currentData.length
+                        ? setSelectedIds([])
+                        : setSelectedIds(currentData.map((i) => i.id))
                     }
-                    onChange={toggleSelectAll}
                   />
                 </th>
-                <th className="p-5 font-bold w-[28%]">Project & Info</th>
-                <th className="p-5 font-bold w-[12%]">Chain</th>
-                <th className="p-5 font-bold w-[10%] text-center">Done?</th>
-                <th className="p-5 font-bold w-[15%] text-center">Status</th>
-                <th className="p-5 font-bold w-[30%] text-right pr-6">
-                  Actions
+                <th className="p-5 w-[300px] font-black text-white">
+                  Project & Info
                 </th>
+                <th className="p-5 w-[160px] font-bold text-center">Chain</th>
+                <th className="p-5 w-[100px] font-bold text-center">Done?</th>
+                <th className="p-5 w-[120px] font-bold text-center">Status</th>
+                <th className="p-5 w-[200px] font-bold text-center">Actions</th>
+                {/* FIXED: MENU header locked inside table boundaries */}
+                <th className="p-5 w-[80px] font-bold text-center">Menu</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800/50">
               {currentData.map((item) => {
-                const isDone =
-                  item.status === "DONE" ||
-                  item.status === "LANDED" ||
-                  item.status === "RUGGED";
                 const isFinished =
                   item.status === "LANDED" || item.status === "RUGGED";
-
                 return (
                   <tr
                     key={item.id}
                     className="transition-colors hover:bg-zinc-100/50 dark:hover:bg-zinc-800/30 group"
                   >
-                    <td className="p-5 text-center">
+                    <td className="p-5 w-[60px] text-center">
                       <UiverseCheckbox
                         checked={selectedIds.includes(item.id)}
-                        onChange={() => toggleSelect(item.id)}
+                        onChange={() =>
+                          setSelectedIds((prev) =>
+                            prev.includes(item.id)
+                              ? prev.filter((i) => i !== item.id)
+                              : [...prev, item.id],
+                          )
+                        }
                       />
                     </td>
-
-                    <td className="p-5">
+                    <td className="p-5 w-[300px] overflow-hidden">
                       <div className="flex items-center gap-2 mb-2">
-                        <p
-                          className="font-extrabold text-zinc-900 dark:text-zinc-50 text-base truncate"
-                          title={item.airdropName}
-                        >
+                        <p className="font-black text-white text-base truncate max-w-[180px] uppercase tracking-tighter">
                           {item.airdropName}
                         </p>
                         {item.tokenTicker && (
-                          <span className="px-2 py-0.5 text-[10px] font-black bg-zinc-200 dark:bg-zinc-700 rounded text-zinc-600 dark:text-zinc-300">
+                          <span className="px-2 py-0.5 text-[10px] font-black bg-zinc-700 rounded text-zinc-300 uppercase shrink-0 truncate max-w-[80px]">
                             {item.tokenTicker}
                           </span>
                         )}
                       </div>
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3 text-zinc-400">
                         {item.wallet && (
-                          <div
-                            title={item.wallet}
-                            className="flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400 font-mono bg-zinc-200/50 dark:bg-zinc-800/50 px-2 py-1 rounded-md border border-zinc-300/50 dark:border-zinc-700/50"
-                          >
-                            <Wallet className="w-3.5 h-3.5 text-emerald-500" />{" "}
-                            {item.wallet.slice(0, 6)}...{item.wallet.slice(-4)}
+                          <div className="flex items-center gap-1 text-[10px] font-mono bg-zinc-800 px-1.5 py-0.5 rounded border border-zinc-700/50 shrink-0">
+                            <Wallet size={12} className="text-emerald-500" />{" "}
+                            {item.wallet.slice(0, 6)}...
                           </div>
                         )}
-                        <div className="flex items-center gap-2.5 border-l border-zinc-200 dark:border-zinc-800 pl-3">
-                          {item.xHandle && (
-                            <span
-                              title={`X: ${item.xHandle}`}
-                              className="cursor-pointer"
+                        <div className="flex items-center gap-2">
+                          {item.websiteLink && (
+                            <a
+                              href={item.websiteLink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="hover:text-pink-400 transition-colors"
                             >
-                              <Twitter className="w-4 h-4 text-zinc-400 hover:text-blue-400 transition-colors" />
-                            </span>
+                              <Globe size={14} />
+                            </a>
                           )}
-                          {item.telegram && (
-                            <span
-                              title={`TG: ${item.telegram}`}
-                              className="cursor-pointer"
-                            >
-                              <Send className="w-4 h-4 text-zinc-400 hover:text-sky-400 transition-colors" />
-                            </span>
-                          )}
-                          {item.contactEmail && (
-                            <span
-                              title={`Email: ${item.contactEmail}`}
-                              className="cursor-pointer"
-                            >
-                              <Mail className="w-4 h-4 text-zinc-400 hover:text-amber-500 transition-colors" />
-                            </span>
-                          )}
+                          <span className="hover:text-zinc-50 cursor-pointer">
+                            <XLogo />
+                          </span>
+                          <span className="hover:text-sky-400 cursor-pointer">
+                            <Send size={14} />
+                          </span>
+                          <span className="hover:text-amber-500 cursor-pointer">
+                            <Mail size={14} />
+                          </span>
                         </div>
                       </div>
                     </td>
-
-                    <td className="p-5">
-                      <span className="px-3 py-1 text-xs font-bold rounded-md bg-zinc-200/50 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 inline-flex items-center gap-2">
-                        <BarChart3 className="w-3.5 h-3.5" /> {item.chain}
+                    <td className="p-5 w-[160px] text-center">
+                      <span className="px-3 py-1 bg-zinc-800 rounded-md inline-flex items-center gap-2 text-[10px] font-bold uppercase truncate max-w-[140px] shadow-sm">
+                        <BarChart3 size={12} /> {item.chain}
                       </span>
                     </td>
-                    <td className="p-5">
+                    <td className="p-5 w-[100px] text-center">
                       <div className="flex justify-center">
                         <NeonToggle
-                          isOn={isDone}
+                          isOn={
+                            item.status !== "PLANNED" &&
+                            item.status !== "IN_PROGRESS"
+                          }
                           onToggle={() => {
                             if (!isFinished)
-                              startTransition(() => {
-                                toggleDoneStatus(item.id, item.status);
-                              });
+                              startTransition(() =>
+                                toggleDoneStatus(item.id, item.status),
+                              );
                           }}
                         />
                       </div>
                     </td>
-                    <td className="p-5">
-                      <div className="flex flex-col items-center">
-                        <span
-                          className={`inline-block w-24 px-2 py-1.5 text-[10px] font-black tracking-wider uppercase rounded-lg border text-center ${item.status === "LANDED" ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/30 shadow-[0_0_10px_rgba(16,185,129,0.2)]" : item.status === "RUGGED" ? "bg-red-500/10 text-red-500 border-red-500/30" : item.status === "DONE" ? "bg-blue-500/10 text-blue-500 border-blue-500/30" : "bg-orange-500/10 text-orange-500 border-orange-500/30"}`}
-                        >
-                          {item.status.replace("_", " ")}
-                        </span>
-                        {item.status === "LANDED" && item.landedValue && (
-                          <p className="text-xs font-black text-emerald-500 mt-1.5">
-                            +${item.landedValue}
-                          </p>
-                        )}
-                      </div>
+                    <td className="p-5 w-[120px] text-center">
+                      <span
+                        className={`inline-block w-24 px-2 py-1.5 text-[10px] font-black uppercase rounded-lg border text-center ${item.status === "LANDED" ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/30 shadow-[0_0_10px_rgba(16,185,129,0.1)]" : item.status === "RUGGED" ? "bg-red-500/10 text-red-500 border-red-500/30" : "bg-zinc-100 dark:bg-zinc-800"}`}
+                      >
+                        {item.status.replace("_", " ")}
+                      </span>
                     </td>
-
-                    <td className="p-5 pr-6">
-                      <div className="flex justify-end items-center gap-2">
-                        {/* FIX: Tombol Action (Landed & Rugged) di Kiri, pake style unlucky-treefrog-77, Emoji diganti Lucide Icons */}
-                        {!isFinished && (
-                          <div className="flex items-center gap-2 border-r border-zinc-200 dark:border-zinc-700 pr-3 mr-1">
-                            <button
-                              onClick={() => {
-                                setSelectedAirdropId(item.id);
-                                setLandingModalOpen(true);
-                              }}
-                              disabled={isPending}
-                              className="relative inline-flex items-center justify-center px-3 py-1.5 text-[10px] font-black tracking-widest text-emerald-500 transition-all duration-300 bg-zinc-100 dark:bg-[#18181b] rounded border border-emerald-500/20 hover:border-emerald-500 hover:text-emerald-400 hover:shadow-[inset_0_0_10px_rgba(16,185,129,0.2),_0_0_15px_rgba(16,185,129,0.3)] disabled:opacity-50 overflow-hidden"
-                            >
-                              <Banknote className="w-3.5 h-3.5 mr-1.5" /> LANDED
-                            </button>
-                            <button
-                              onClick={() =>
-                                startTransition(() => {
-                                  markAsRugged(item.id);
-                                })
-                              }
-                              disabled={isPending}
-                              className="relative inline-flex items-center justify-center px-3 py-1.5 text-[10px] font-black tracking-widest text-red-500 transition-all duration-300 bg-zinc-100 dark:bg-[#18181b] rounded border border-red-500/20 hover:border-red-500 hover:text-red-400 hover:shadow-[inset_0_0_10px_rgba(239,68,68,0.2),_0_0_15px_rgba(239,68,68,0.3)] disabled:opacity-50 overflow-hidden"
-                            >
-                              <Skull className="w-3.5 h-3.5 mr-1.5" /> RUGGED
-                            </button>
-                          </div>
-                        )}
-
-                        {/* FIX: Tombol Management (Detail & Edit) di Paling Kanan */}
+                    <td className="p-5 w-[200px] text-center">
+                      <div className="flex items-center justify-center gap-2">
                         <button
                           onClick={() => {
                             setSelectedAirdropData(item);
                             setViewModalOpen(true);
                           }}
-                          title="View Detail"
-                          className="p-1.5 text-zinc-400 hover:text-emerald-500 hover:bg-emerald-500/10 rounded-md transition-all"
+                          className="px-3 py-1.5 text-[10px] font-black text-emerald-500 border border-emerald-500/50 rounded-lg hover:bg-emerald-500 hover:text-white transition-all uppercase tracking-widest"
                         >
-                          <Search className="w-4 h-4" />
+                          DETAIL
                         </button>
-                        <button
-                          onClick={() => {
-                            setSelectedAirdropData(item);
-                            setEditModalOpen(true);
-                          }}
-                          title="Edit Target"
-                          className="p-1.5 text-zinc-400 hover:text-blue-500 hover:bg-blue-500/10 rounded-md transition-all"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
+                        {!isFinished && (
+                          <button
+                            onClick={() => {
+                              setSelectedAirdropData(item);
+                              setEditModalOpen(true);
+                            }}
+                            className="px-3 py-1.5 text-[10px] font-black text-blue-500 border border-blue-500/50 rounded-lg hover:bg-blue-500 hover:text-white transition-all uppercase tracking-widest"
+                          >
+                            EDIT
+                          </button>
+                        )}
                       </div>
+                    </td>
+                    <td className="p-5 w-[80px] text-center">
+                      {!isFinished && (
+                        <div className="relative inline-block">
+                          <StyledHamburger>
+                            <label className="hamburger">
+                              <input
+                                type="checkbox"
+                                checked={activeMenuId === item.id}
+                                onChange={() =>
+                                  setActiveMenuId(
+                                    activeMenuId === item.id ? null : item.id,
+                                  )
+                                }
+                              />
+                              <svg viewBox="0 0 32 32">
+                                <path
+                                  className="line line-top-bottom"
+                                  d="M27 10 13 10C10.8 10 9 8.2 9 6 9 3.5 10.8 2 13 2 15.2 2 17 3.8 17 6L17 26C17 28.2 18.8 30 21 30 23.2 30 25 28.2 25 26 25 23.8 23.2 22 21 22L7 22"
+                                />
+                                <path className="line" d="M7 16 27 16" />
+                              </svg>
+                            </label>
+                          </StyledHamburger>
+                          <AnimatePresence>
+                            {activeMenuId === item.id && (
+                              <motion.div
+                                initial={{ opacity: 0, scale: 0.9, y: 5 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.9, y: 5 }}
+                                className="absolute right-0 top-full mt-3 w-44 bg-zinc-950 border border-zinc-800 rounded-xl shadow-2xl z-[150] overflow-hidden"
+                              >
+                                <button
+                                  onClick={() => {
+                                    setSelectedAirdropId(item.id);
+                                    setLandingModalOpen(true);
+                                  }}
+                                  className="w-full flex items-center gap-3 px-5 py-4 text-xs font-black text-emerald-500 hover:bg-emerald-500/10 transition-colors uppercase border-b border-zinc-200 dark:border-zinc-800"
+                                >
+                                  <Banknote size={16} /> Mark Landed
+                                </button>
+                                <button
+                                  onClick={() => handleRuggedAction(item.id)}
+                                  className="w-full flex items-center gap-3 px-5 py-4 text-xs font-black text-red-500 hover:bg-red-500/10 transition-colors uppercase"
+                                >
+                                  <Skull size={16} /> Mark Rugged
+                                </button>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 );
@@ -314,197 +356,154 @@ export default function AirdropClientTable({
         </GlassCard>
       </div>
 
-      {/* --- MOBILE CARD VIEW (Fully Responsive & Clean) --- */}
+      {/* Mobile Card View mapping correctly */}
       <div className="md:hidden space-y-4">
         {currentData.map((item) => {
-          const isDone =
-            item.status === "DONE" ||
-            item.status === "LANDED" ||
-            item.status === "RUGGED";
           const isFinished =
             item.status === "LANDED" || item.status === "RUGGED";
-
           return (
             <GlassCard
               key={item.id}
-              className="p-5 flex flex-col gap-4 border border-zinc-200 dark:border-zinc-800/80 shadow-md"
+              className="p-5 flex flex-col gap-4 border border-zinc-800 shadow-md"
             >
-              {/* Top: Checkbox, Name, Status Badge */}
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-center gap-3 overflow-hidden">
-                  <div className="mt-1">
-                    <UiverseCheckbox
-                      checked={selectedIds.includes(item.id)}
-                      onChange={() => toggleSelect(item.id)}
-                    />
-                  </div>
-                  <div className="flex flex-col truncate">
-                    <p className="font-extrabold text-zinc-900 dark:text-zinc-50 text-base truncate">
+              <div className="flex items-start justify-between gap-3 min-w-0 flex-1">
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <UiverseCheckbox
+                    checked={selectedIds.includes(item.id)}
+                    onChange={() =>
+                      setSelectedIds((prev) =>
+                        prev.includes(item.id)
+                          ? prev.filter((i) => i !== item.id)
+                          : [...prev, item.id],
+                      )
+                    }
+                  />
+                  <div className="flex flex-col min-w-0">
+                    <p className="font-black text-white text-base truncate uppercase tracking-tighter leading-tight break-all">
                       {item.airdropName}
                     </p>
-                    <div className="flex items-center gap-2 mt-1">
-                      {item.tokenTicker && (
-                        <span className="px-2 py-0.5 text-[10px] font-black bg-zinc-200 dark:bg-zinc-700 rounded text-zinc-600 dark:text-zinc-300">
-                          {item.tokenTicker}
-                        </span>
-                      )}
-                      <p className="text-[10px] text-zinc-500 flex items-center gap-1">
-                        <CalendarDays className="w-3 h-3" />{" "}
-                        {new Date(item.taskDate).toLocaleDateString()}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex flex-col items-end shrink-0">
-                  <span
-                    className={`inline-block px-2 py-1 text-[9px] font-black tracking-wider uppercase rounded border text-center ${item.status === "LANDED" ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/30" : item.status === "RUGGED" ? "bg-red-500/10 text-red-500 border-red-500/30" : item.status === "DONE" ? "bg-blue-500/10 text-blue-500 border-blue-500/30" : "bg-orange-500/10 text-orange-500 border-orange-500/30"}`}
-                  >
-                    {item.status.replace("_", " ")}
-                  </span>
-                  {item.status === "LANDED" && item.landedValue && (
-                    <p className="text-[10px] font-black text-emerald-500 mt-1">
-                      +${item.landedValue}
+                    <p className="text-[10px] text-zinc-500 font-black uppercase truncate">
+                      {item.tokenTicker || "NO TICKER"}
                     </p>
-                  )}
-                </div>
-              </div>
-
-              {/* Middle: Chain & Contacts Grid */}
-              <div className="bg-zinc-100/50 dark:bg-zinc-900/50 rounded-xl p-3 grid grid-cols-1 sm:grid-cols-2 gap-3 border border-zinc-200 dark:border-zinc-800">
-                <div className="flex items-center gap-2 text-xs font-bold text-zinc-700 dark:text-zinc-300">
-                  <BarChart3 className="w-4 h-4 text-emerald-500" />{" "}
-                  {item.chain}
-                </div>
-                {item.wallet && (
-                  <div className="flex items-center gap-2 text-xs font-mono text-zinc-500 dark:text-zinc-400 truncate">
-                    <Wallet className="w-4 h-4 shrink-0" />{" "}
-                    {item.wallet.slice(0, 8)}...{item.wallet.slice(-4)}
                   </div>
-                )}
-                <div className="flex gap-4 sm:col-span-2 pt-1 border-t border-zinc-200 dark:border-zinc-800">
-                  {item.xHandle && (
-                    <span
-                      title={`X: ${item.xHandle}`}
-                      className="flex items-center gap-1.5 text-xs text-zinc-500"
-                    >
-                      <Twitter className="w-3.5 h-3.5 text-blue-400" />{" "}
-                      {item.xHandle}
-                    </span>
-                  )}
-                  {item.telegram && (
-                    <span
-                      title={`TG: ${item.telegram}`}
-                      className="flex items-center gap-1.5 text-xs text-zinc-500"
-                    >
-                      <Send className="w-3.5 h-3.5 text-sky-400" />{" "}
-                      {item.telegram}
-                    </span>
-                  )}
-                  {item.contactEmail && (
-                    <span
-                      title={`Email: ${item.contactEmail}`}
-                      className="flex items-center gap-1.5 text-xs text-zinc-500"
-                    >
-                      <Mail className="w-3.5 h-3.5 text-amber-500" /> Email
-                    </span>
-                  )}
                 </div>
+                <span
+                  className={`px-2 py-1 text-[9px] font-black tracking-wider uppercase rounded border ${item.status === "LANDED" ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/30" : "bg-zinc-800 border-zinc-700"}`}
+                >
+                  {item.status.replace("_", " ")}
+                </span>
               </div>
-
-              {/* Bottom: Toggle & Action Buttons */}
-              <div className="flex items-center justify-between gap-2 mt-2">
-                <div className="flex items-center gap-3">
-                  <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">
-                    Done?
-                  </span>
-                  <NeonToggle
-                    isOn={isDone}
-                    onToggle={() => {
-                      if (!isFinished)
-                        startTransition(() => {
-                          toggleDoneStatus(item.id, item.status);
-                        });
-                    }}
-                  />
-                </div>
-
-                <div className="flex items-center gap-2">
+              <div className="flex justify-between items-center gap-2 mt-1">
+                <NeonToggle
+                  isOn={
+                    item.status !== "PLANNED" && item.status !== "IN_PROGRESS"
+                  }
+                  onToggle={() => {
+                    if (!isFinished)
+                      startTransition(() =>
+                        toggleDoneStatus(item.id, item.status),
+                      );
+                  }}
+                />
+                <div className="flex gap-2 items-center">
                   <button
                     onClick={() => {
                       setSelectedAirdropData(item);
                       setViewModalOpen(true);
                     }}
-                    className="p-2 text-zinc-400 bg-zinc-100 dark:bg-zinc-800 rounded-lg hover:text-emerald-500 transition-colors"
+                    className="px-3 py-1.5 text-[10px] font-black text-emerald-500 border border-emerald-500/20 rounded-lg"
                   >
-                    <Search className="w-4 h-4" />
+                    DETAIL
                   </button>
-                  <button
-                    onClick={() => {
-                      setSelectedAirdropData(item);
-                      setEditModalOpen(true);
-                    }}
-                    className="p-2 text-zinc-400 bg-zinc-100 dark:bg-zinc-800 rounded-lg hover:text-blue-500 transition-colors"
-                  >
-                    <Edit className="w-4 h-4" />
-                  </button>
+                  {!isFinished && (
+                    <div className="relative">
+                      <StyledHamburger>
+                        <label className="hamburger">
+                          <input
+                            type="checkbox"
+                            checked={activeMenuId === item.id}
+                            onChange={() =>
+                              setActiveMenuId(
+                                activeMenuId === item.id ? null : item.id,
+                              )
+                            }
+                          />
+                          <svg viewBox="0 0 32 32">
+                            <path
+                              className="line line-top-bottom"
+                              d="M27 10 13 10C10.8 10 9 8.2 9 6 9 3.5 10.8 2 13 2 15.2 2 17 3.8 17 6L17 26C17 28.2 18.8 30 21 30 23.2 30 25 28.2 25 26 25 23.8 23.2 22 21 22L7 22"
+                            />
+                            <path className="line" d="M7 16 27 16" />
+                          </svg>
+                        </label>
+                      </StyledHamburger>
+                      <AnimatePresence>
+                        {activeMenuId === item.id && (
+                          <motion.div
+                            initial={{ opacity: 0, scale: 0.9, y: -5 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.9, y: -5 }}
+                            className="absolute right-0 bottom-full mb-3 w-40 bg-zinc-950 border border-zinc-800 rounded-xl shadow-2xl z-[150] overflow-hidden"
+                          >
+                            <button
+                              onClick={() => {
+                                setSelectedAirdropId(item.id);
+                                setLandingModalOpen(true);
+                              }}
+                              className="w-full flex items-center gap-2 px-4 py-3 text-[10px] font-black text-emerald-500 text-left uppercase"
+                            >
+                              Mark Landed
+                            </button>
+                            <button
+                              onClick={() => handleRuggedAction(item.id)}
+                              className="w-full flex items-center gap-2 px-4 py-3 text-[10px] font-black text-red-500 text-left uppercase border-t border-zinc-200 dark:border-zinc-800"
+                            >
+                              Mark Rugged
+                            </button>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  )}
                 </div>
               </div>
-
-              {/* Quick Status Buttons (Full Width in Mobile) */}
-              {!isFinished && (
-                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-zinc-200 dark:border-zinc-800">
-                  <button
-                    onClick={() => {
-                      setSelectedAirdropId(item.id);
-                      setLandingModalOpen(true);
-                    }}
-                    disabled={isPending}
-                    className="relative flex items-center justify-center gap-2 px-3 py-2.5 text-[10px] font-black tracking-widest text-emerald-500 bg-zinc-100 dark:bg-[#18181b] rounded-lg border border-emerald-500/20 shadow-[inset_0_0_5px_rgba(16,185,129,0.1)] hover:border-emerald-500 hover:shadow-[inset_0_0_10px_rgba(16,185,129,0.2),_0_0_15px_rgba(16,185,129,0.3)] transition-all active:scale-95 disabled:opacity-50"
-                  >
-                    <Banknote className="w-4 h-4" /> LANDED
-                  </button>
-                  <button
-                    onClick={() =>
-                      startTransition(() => {
-                        markAsRugged(item.id);
-                      })
-                    }
-                    disabled={isPending}
-                    className="relative flex items-center justify-center gap-2 px-3 py-2.5 text-[10px] font-black tracking-widest text-red-500 bg-zinc-100 dark:bg-[#18181b] rounded-lg border border-red-500/20 shadow-[inset_0_0_5px_rgba(239,68,68,0.1)] hover:border-red-500 hover:shadow-[inset_0_0_10px_rgba(239,68,68,0.2),_0_0_15px_rgba(239,68,68,0.3)] transition-all active:scale-95 disabled:opacity-50"
-                  >
-                    <Skull className="w-4 h-4" /> RUGGED
-                  </button>
-                </div>
-              )}
             </GlassCard>
           );
         })}
       </div>
 
-      {/* Pagination Controls */}
+      {/* FIXED: RESTORED PAGINATION CONTROLS */}
       {totalPages > 1 && (
-        <div className="flex justify-center items-center gap-4 pt-4">
+        <div className="flex justify-center items-center gap-6 pt-10 pb-6 border-t border-white/5">
           <button
             onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
             disabled={currentPage === 1}
-            className="px-4 py-2 text-sm font-bold bg-zinc-200 dark:bg-zinc-800 rounded-lg disabled:opacity-30 hover:bg-emerald-500 hover:text-white transition-colors"
+            className="group flex items-center gap-2 px-6 py-2.5 text-[10px] font-black text-zinc-500 hover:text-emerald-500 disabled:opacity-20 transition-all uppercase tracking-[0.2em] bg-zinc-900 border border-white/5 rounded-xl shadow-xl active:scale-95"
           >
-            PREV
+            ← Previous
           </button>
-          <span className="text-sm font-bold">
-            {currentPage} / {totalPages}
-          </span>
+          <div className="flex items-center gap-3">
+            <span className="text-[11px] font-black text-emerald-500 bg-emerald-500/10 px-4 py-1.5 rounded-lg border border-emerald-500/20 shadow-[0_0_15px_rgba(16,185,129,0.1)]">
+              {currentPage}
+            </span>
+            <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">
+              of
+            </span>
+            <span className="text-[11px] font-black text-zinc-400">
+              {totalPages}
+            </span>
+          </div>
           <button
             onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
             disabled={currentPage === totalPages}
-            className="px-4 py-2 text-sm font-bold bg-zinc-200 dark:bg-zinc-800 rounded-lg disabled:opacity-30 hover:bg-emerald-500 hover:text-white transition-colors"
+            className="group flex items-center gap-2 px-6 py-2.5 text-[10px] font-black text-zinc-500 hover:text-emerald-500 disabled:opacity-20 transition-all uppercase tracking-[0.2em] bg-zinc-900 border border-white/5 rounded-xl shadow-xl active:scale-95"
           >
-            NEXT
+            Next →
           </button>
         </div>
       )}
 
-      {/* Modals */}
+      {/* Modals & Drama remain exactly same logic */}
       <DetailModal
         isOpen={viewModalOpen}
         onClose={() => setViewModalOpen(false)}
@@ -517,10 +516,53 @@ export default function AirdropClientTable({
         userId={userId}
       />
 
-      {/* Modal Landed Dollar */}
+      <AnimatePresence>
+        {showRuggedOverlay && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[1000] flex flex-col items-center justify-center bg-zinc-950/95 backdrop-blur-xl text-center"
+          >
+            <motion.div
+              animate={{ rotate: [0, -10, 10, 0], scale: [1, 1.1, 1] }}
+              transition={{ repeat: Infinity, duration: 0.5 }}
+              className="mb-8 text-red-500"
+            >
+              <Skull size={160} strokeWidth={1} />
+            </motion.div>
+            <h1 className="text-7xl font-black text-red-500 uppercase tracking-tighter italic shadow-2xl">
+              YOU GOT RUGGED!
+            </h1>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showLandedOverlay && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[1000] flex flex-col items-center justify-center bg-zinc-950/95 backdrop-blur-xl text-center"
+          >
+            <motion.div
+              animate={{ scale: [1, 1.2, 1], rotate: [0, 360] }}
+              transition={{ repeat: Infinity, duration: 2 }}
+              className="mb-8 text-emerald-500"
+            >
+              <Banknote size={160} strokeWidth={1} />
+            </motion.div>
+            <h1 className="text-7xl font-black text-emerald-500 uppercase tracking-tighter italic shadow-2xl">
+              BAG SECURED!
+            </h1>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <AnimatePresence>
         {landingModalOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -532,18 +574,18 @@ export default function AirdropClientTable({
               initial={{ scale: 0.9, opacity: 0, y: 20 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              className="relative w-full max-w-sm rounded-3xl border border-emerald-500/30 bg-zinc-900 p-8 shadow-[0_0_50px_rgba(16,185,129,0.3)]"
+              className="relative w-full max-w-sm rounded-3xl border border-emerald-500/30 bg-zinc-900 p-8 shadow-2xl text-center"
             >
-              <h3 className="text-2xl font-extrabold text-white mb-2">
-                Congratz Bro! 🎉
+              <h3 className="text-2xl font-black text-white mb-6 uppercase">
+                Bag Amount ($)
               </h3>
-              <p className="text-sm text-zinc-400 mb-6">
-                Cair berapa dollar nih dari target ini?
-              </p>
-              <form onSubmit={handleLandedSubmit}>
+              <form
+                onSubmit={handleLandedSubmit}
+                className="space-y-6 text-left"
+              >
                 <UiverseInput
                   id="dollar"
-                  label="Landed Value (USD)"
+                  label="Landed Value"
                   type="number"
                   step="0.01"
                   required
@@ -551,22 +593,12 @@ export default function AirdropClientTable({
                   onChange={(e) => setDollarInput(e.target.value)}
                   startIcon={<Grip />}
                 />
-                <div className="flex justify-end gap-3 mt-8">
-                  <button
-                    type="button"
-                    onClick={() => setLandingModalOpen(false)}
-                    className="px-4 py-2 text-sm font-bold text-zinc-400"
-                  >
-                    CANCEL
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isPending}
-                    className="px-6 py-2 text-sm font-bold text-white bg-emerald-500 rounded-lg hover:bg-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.5)]"
-                  >
-                    SAVE 💸
-                  </button>
-                </div>
+                <button
+                  type="submit"
+                  className="w-full py-4 bg-emerald-500 text-zinc-950 font-black rounded-xl uppercase tracking-widest shadow-lg"
+                >
+                  Lock Profit 💸
+                </button>
               </form>
             </motion.div>
           </div>

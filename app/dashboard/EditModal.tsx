@@ -11,7 +11,18 @@ export const EditModal = ({ isOpen, onClose, data, userId }: any) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [mounted, setMounted] = useState(false);
 
-  useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    setMounted(true);
+    // FIXED: Lock background scroll for EDIT modal context fixed logic
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "unset";
+    }
+    return () => {
+      document.body.style.overflow = "unset";
+    };
+  }, [isOpen]);
 
   if (!data) return null;
 
@@ -38,38 +49,34 @@ export const EditModal = ({ isOpen, onClose, data, userId }: any) => {
                   onClick={onClose}
                   className="absolute inset-0 bg-zinc-950/80 backdrop-blur-sm"
                 />
-
                 <motion.div
-                  initial={{ scale: 0.9, opacity: 0, y: 20 }}
-                  animate={{ scale: 1, opacity: 1, y: 0 }}
-                  exit={{ scale: 0.9, opacity: 0, y: 20 }}
-                  transition={{ type: "spring", damping: 25, stiffness: 300 }}
-                  className="relative w-full max-w-3xl overflow-hidden rounded-3xl border border-blue-500/30 bg-zinc-50 dark:bg-zinc-900/95 p-10 shadow-[0_0_60px_rgba(59,130,246,0.2)] backdrop-blur-xl"
+                  initial={{ scale: 0.9, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.9, opacity: 0 }}
+                  className="relative w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-[40px] border border-blue-500/30 bg-zinc-900 p-10 shadow-2xl backdrop-blur-xl custom-scrollbar"
                 >
-                  <header className="flex items-center gap-3 mb-10 border-b border-zinc-200 dark:border-zinc-800 pb-6">
-                    <Edit3 className="w-8 h-8 text-blue-500" />
-                    <h2 className="text-3xl font-extrabold text-zinc-900 dark:text-zinc-50">
-                      Edit <span className="text-blue-500">Target</span> ✏️
+                  <header className="flex items-center gap-3 mb-10 border-b border-white/5 pb-6">
+                    <Edit3 size={32} className="text-blue-500 shrink-0" />
+                    <h2 className="text-4xl font-black text-white uppercase tracking-tighter leading-tight break-all">
+                      Modify Target
                     </h2>
                   </header>
-
                   <form onSubmit={handleSubmit} className="space-y-12">
                     <AirdropForm defaultValues={data} />
-
-                    <footer className="flex justify-end gap-3 pt-6 border-t border-zinc-200 dark:border-zinc-800">
+                    <footer className="flex justify-end gap-3 pt-6 border-t border-white/5">
                       <button
                         type="button"
                         onClick={onClose}
-                        className="px-5 py-2.5 text-sm font-bold text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 transition-colors rounded-xl bg-zinc-100 dark:bg-zinc-800"
+                        className="px-5 py-2.5 text-sm font-bold text-zinc-500 bg-zinc-800 rounded-xl uppercase tracking-widest"
                       >
                         CANCEL
                       </button>
                       <button
                         type="submit"
                         disabled={isSubmitting}
-                        className="px-7 py-2.5 text-sm font-bold text-white bg-blue-500 rounded-xl hover:bg-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.5)] transition-all disabled:opacity-50"
+                        className="px-7 py-2.5 text-sm font-bold text-white bg-blue-500 rounded-xl hover:bg-blue-400 disabled:opacity-50 uppercase tracking-widest shadow-xl"
                       >
-                        {isSubmitting ? "UPDATING..." : "UPDATE TARGET"}
+                        {isSubmitting ? "Locking Log..." : "Update Target"}
                       </button>
                     </footer>
                   </form>

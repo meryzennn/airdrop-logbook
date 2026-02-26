@@ -44,31 +44,29 @@ model Session {
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-// Tambahkan di dalam file schema.prisma lu
-
 model Airdrop {
   id           String   @id @default(cuid())
   userId       String
   airdropName  String
   chain        String
-  tokenTicker  String?  // <-- BARU: Buat nyimpen nama coin (misal: $RYZEN, $ETH)
-  landedValue  Float?   // <-- BARU: Buat nyimpen dapet berapa dollar pas landing
+  tokenTicker  String?
+  landedValue  Float?
   taskDate     DateTime @default(now())
   wallet       String?
-  xHandle      String?  // (Udah ada) Buat nyimpen Twitter waitlist
-  telegram     String?  // (Udah ada) Buat nyimpen Telegram waitlist
-  contactEmail String?  // (Udah ada) Buat nyimpen Email waitlist
+  websiteLink  String?  // <-- BARU: Buat nyimpen link project
+  xHandle      String?
+  telegram     String?
+  contactEmail String?
   description  String?
   status       Status   @default(PLANNED)
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-// Tambahin status RUGGED di paling bawah
 enum Status {
   PLANNED
   IN_PROGRESS
   DONE
   LANDED
   ARCHIVED
-  RUGGED  // <-- BARU: Buat project kampret yang ga landing / scam
+  RUGGED
 }

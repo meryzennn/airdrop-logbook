@@ -9,6 +9,7 @@ function getAirdropDataFromForm(formData: FormData) {
     chain: formData.get("chain") as string,
     tokenTicker: (formData.get("tokenTicker") as string) || null,
     wallet: (formData.get("wallet") as string) || null,
+    websiteLink: (formData.get("websiteLink") as string) || null, // <-- BARU
     xHandle: (formData.get("xHandle") as string) || null,
     telegram: (formData.get("telegram") as string) || null,
     contactEmail: (formData.get("contactEmail") as string) || null,
