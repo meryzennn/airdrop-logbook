@@ -13,7 +13,6 @@ export const EditModal = ({ isOpen, onClose, data, userId }: any) => {
 
   useEffect(() => {
     setMounted(true);
-    // FIXED: Lock background scroll for EDIT modal context fixed logic
     if (isOpen) {
       document.body.style.overflow = "hidden";
     } else {
@@ -49,15 +48,17 @@ export const EditModal = ({ isOpen, onClose, data, userId }: any) => {
                   onClick={onClose}
                   className="absolute inset-0 bg-zinc-950/80 backdrop-blur-sm"
                 />
+
+                {/* FIXED: No visible scrollbar logic */}
                 <motion.div
                   initial={{ scale: 0.9, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   exit={{ scale: 0.9, opacity: 0 }}
-                  className="relative w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-[40px] border border-blue-500/30 bg-zinc-900 p-10 shadow-2xl backdrop-blur-xl custom-scrollbar"
+                  className="relative w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-[40px] border border-blue-500/30 bg-zinc-900 p-10 shadow-2xl backdrop-blur-xl [ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                 >
                   <header className="flex items-center gap-3 mb-10 border-b border-white/5 pb-6">
                     <Edit3 size={32} className="text-blue-500 shrink-0" />
-                    <h2 className="text-4xl font-black text-white uppercase tracking-tighter leading-tight break-all">
+                    <h2 className="text-4xl font-black text-white uppercase tracking-tighter leading-none">
                       Modify Target
                     </h2>
                   </header>
@@ -74,7 +75,7 @@ export const EditModal = ({ isOpen, onClose, data, userId }: any) => {
                       <button
                         type="submit"
                         disabled={isSubmitting}
-                        className="px-7 py-2.5 text-sm font-bold text-white bg-blue-500 rounded-xl hover:bg-blue-400 disabled:opacity-50 uppercase tracking-widest shadow-xl"
+                        className="px-7 py-2.5 text-sm font-bold text-white bg-blue-500 rounded-xl hover:bg-blue-400 disabled:opacity-50 uppercase tracking-widest shadow-lg"
                       >
                         {isSubmitting ? "Locking Log..." : "Update Target"}
                       </button>
