@@ -23,9 +23,12 @@ import {
   CalendarDays,
   BarChart3,
   Grip,
+  Banknote,
+  Skull,
 } from "lucide-react";
+import { DetailModal } from "./DetailModal";
+import { EditModal } from "./EditModal";
 
-// Update tipe data biar TS ga bawel
 type Airdrop = {
   id: string;
   airdropName: string;
@@ -49,39 +52,32 @@ export default function AirdropClientTable({
   userId: string;
 }) {
   const [isPending, startTransition] = useTransition();
-
-  // State untuk Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  // State untuk Bulk Delete (Checkbox)
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-
-  // State untuk Modal "Mark Landed"
   const [landingModalOpen, setLandingModalOpen] = useState(false);
   const [selectedAirdropId, setSelectedAirdropId] = useState("");
   const [dollarInput, setDollarInput] = useState("");
 
-  // Logic Pagination
+  const [viewModalOpen, setViewModalOpen] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [selectedAirdropData, setSelectedAirdropData] =
+    useState<Airdrop | null>(null);
+
   const totalPages = Math.ceil(airdrops.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const currentData = airdrops.slice(startIndex, startIndex + itemsPerPage);
 
-  // Logic Checkbox
-  const toggleSelect = (id: string) => {
+  const toggleSelect = (id: string) =>
     setSelectedIds((prev) =>
       prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id],
     );
-  };
-  const toggleSelectAll = () => {
-    if (selectedIds.length === currentData.length) {
-      setSelectedIds([]);
-    } else {
-      setSelectedIds(currentData.map((item) => item.id));
-    }
-  };
+  const toggleSelectAll = () =>
+    selectedIds.length === currentData.length
+      ? setSelectedIds([])
+      : setSelectedIds(currentData.map((item) => item.id));
 
-  // Logic Delete
   const handleDeleteSelected = () => {
     if (confirm(`Yakin mau hapus ${selectedIds.length} data ini bro?`)) {
       startTransition(() => {
@@ -91,7 +87,6 @@ export default function AirdropClientTable({
     }
   };
 
-  // Logic Submit Dollar Landed
   const handleLandedSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     startTransition(() => {
@@ -105,7 +100,7 @@ export default function AirdropClientTable({
     return (
       <GlassCard className="text-center p-12">
         <p className="text-zinc-500 dark:text-zinc-400 font-medium">
-          No airdrops tracked yet. Click the button above to add a real entry!
+          No targets tracked yet. Click the button above to add a real entry!
         </p>
       </GlassCard>
     );
@@ -113,30 +108,27 @@ export default function AirdropClientTable({
 
   return (
     <div className="space-y-4 relative">
-      {/* Top Bar: Bulk Actions & Pagination Info */}
+      {/* Top Bar: Bulk Actions & Pagination */}
       <div className="flex flex-col sm:flex-row gap-4 sm:gap-0 justify-between items-center px-2">
-        <div className="flex items-center gap-4">
-          <button
-            onClick={handleDeleteSelected}
-            disabled={selectedIds.length === 0 || isPending}
-            // Uiverse Inspired: Glowing Red Bulk Delete Button
-            className="group flex items-center gap-2 px-5 py-2.5 text-xs font-black text-red-500 bg-red-500/10 border border-red-500/30 rounded-xl hover:bg-red-500 hover:text-white transition-all duration-300 disabled:opacity-30 disabled:cursor-not-allowed hover:shadow-[0_0_20px_rgba(239,68,68,0.5)] active:scale-95"
-          >
-            <Trash2 className="w-4 h-4" />
-            HAPUS TERPILIH ({selectedIds.length})
-          </button>
-        </div>
-        <div className="text-xs font-bold text-zinc-500 bg-zinc-200/50 dark:bg-zinc-800 px-4 py-2 rounded-lg">
+        <button
+          onClick={handleDeleteSelected}
+          disabled={selectedIds.length === 0 || isPending}
+          className="group flex items-center gap-2 px-5 py-2 text-xs font-black text-red-500 bg-red-500/10 border border-red-500/30 rounded-lg hover:bg-red-500 hover:text-white transition-all duration-300 disabled:opacity-30 disabled:cursor-not-allowed hover:shadow-[0_0_20px_rgba(239,68,68,0.5)] active:scale-95"
+        >
+          <Trash2 className="w-4 h-4" /> HAPUS TERPILIH ({selectedIds.length})
+        </button>
+        <div className="text-xs font-bold text-zinc-500 dark:text-zinc-400">
           PAGE {currentPage} OF {totalPages || 1}
         </div>
       </div>
 
-      {/* --- DESKTOP TABLE VIEW (hidden on small screens) --- */}
+      {/* --- DESKTOP TABLE VIEW --- */}
       <div className="hidden md:block">
-        <GlassCard className="overflow-x-auto p-0">
+        <GlassCard className="overflow-x-auto p-0 border border-zinc-200 dark:border-zinc-800/80">
           <table className="w-full text-left border-collapse table-fixed min-w-[1000px]">
             <thead>
-              <tr className="border-b border-zinc-200 dark:border-zinc-800 text-xs uppercase tracking-widest text-zinc-500 dark:text-zinc-400 bg-zinc-100/50 dark:bg-zinc-900/50">
+              {/* FIX: Hapus background putih/abu-abu, dibikin transparan polos aja biar nyatu */}
+              <tr className="border-b border-zinc-200 dark:border-zinc-800 text-[10px] uppercase tracking-widest text-zinc-500 dark:text-zinc-400">
                 <th className="p-5 w-[5%] text-center">
                   <UiverseCheckbox
                     checked={
@@ -148,9 +140,9 @@ export default function AirdropClientTable({
                 </th>
                 <th className="p-5 font-bold w-[28%]">Project & Info</th>
                 <th className="p-5 font-bold w-[12%]">Chain</th>
-                <th className="p-5 font-bold w-[15%] text-center">Done?</th>
+                <th className="p-5 font-bold w-[10%] text-center">Done?</th>
                 <th className="p-5 font-bold w-[15%] text-center">Status</th>
-                <th className="p-5 font-bold w-[25%] text-right pr-6">
+                <th className="p-5 font-bold w-[30%] text-right pr-6">
                   Actions
                 </th>
               </tr>
@@ -176,7 +168,6 @@ export default function AirdropClientTable({
                       />
                     </td>
 
-                    {/* Project Info & Icons */}
                     <td className="p-5">
                       <div className="flex items-center gap-2 mb-2">
                         <p
@@ -186,20 +177,18 @@ export default function AirdropClientTable({
                           {item.airdropName}
                         </p>
                         {item.tokenTicker && (
-                          <span className="px-2.5 py-1 text-[10px] font-black bg-zinc-200 dark:bg-zinc-700 rounded-md text-zinc-600 dark:text-zinc-300">
+                          <span className="px-2 py-0.5 text-[10px] font-black bg-zinc-200 dark:bg-zinc-700 rounded text-zinc-600 dark:text-zinc-300">
                             {item.tokenTicker}
                           </span>
                         )}
                       </div>
-
-                      {/* Contact Info (Larger icons with title) */}
                       <div className="flex items-center gap-3">
                         {item.wallet && (
                           <div
                             title={item.wallet}
                             className="flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400 font-mono bg-zinc-200/50 dark:bg-zinc-800/50 px-2 py-1 rounded-md border border-zinc-300/50 dark:border-zinc-700/50"
                           >
-                            <Wallet className="w-3.5 h-3.5 text-emerald-500" />
+                            <Wallet className="w-3.5 h-3.5 text-emerald-500" />{" "}
                             {item.wallet.slice(0, 6)}...{item.wallet.slice(-4)}
                           </div>
                         )}
@@ -232,15 +221,12 @@ export default function AirdropClientTable({
                       </div>
                     </td>
 
-                    {/* Chain */}
-                    <td className="p-5 Chain">
-                      <span className="px-3 py-1 text-xs font-bold rounded-md bg-zinc-200/50 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300">
-                        {item.chain}
+                    <td className="p-5">
+                      <span className="px-3 py-1 text-xs font-bold rounded-md bg-zinc-200/50 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 inline-flex items-center gap-2">
+                        <BarChart3 className="w-3.5 h-3.5" /> {item.chain}
                       </span>
                     </td>
-
-                    {/* Neon Toggle */}
-                    <td className="p-5 Toggle Done">
+                    <td className="p-5">
                       <div className="flex justify-center">
                         <NeonToggle
                           isOn={isDone}
@@ -253,20 +239,10 @@ export default function AirdropClientTable({
                         />
                       </div>
                     </td>
-
-                    {/* Status */}
-                    <td className="p-5 Status">
+                    <td className="p-5">
                       <div className="flex flex-col items-center">
                         <span
-                          className={`inline-block w-24 px-2 py-1.5 text-[10px] font-black tracking-wider uppercase rounded-lg border text-center ${
-                            item.status === "LANDED"
-                              ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/30 shadow-[0_0_10px_rgba(16,185,129,0.2)]"
-                              : item.status === "RUGGED"
-                                ? "bg-red-500/10 text-red-500 border-red-500/30"
-                                : item.status === "DONE"
-                                  ? "bg-blue-500/10 text-blue-500 border-blue-500/30"
-                                  : "bg-orange-500/10 text-orange-500 border-orange-500/30"
-                          }`}
+                          className={`inline-block w-24 px-2 py-1.5 text-[10px] font-black tracking-wider uppercase rounded-lg border text-center ${item.status === "LANDED" ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/30 shadow-[0_0_10px_rgba(16,185,129,0.2)]" : item.status === "RUGGED" ? "bg-red-500/10 text-red-500 border-red-500/30" : item.status === "DONE" ? "bg-blue-500/10 text-blue-500 border-blue-500/30" : "bg-orange-500/10 text-orange-500 border-orange-500/30"}`}
                         >
                           {item.status.replace("_", " ")}
                         </span>
@@ -278,46 +254,57 @@ export default function AirdropClientTable({
                       </div>
                     </td>
 
-                    {/* Actions */}
-                    <td className="p-5 pr-6 Actions flex items-center justify-end gap-2 mt-4">
-                      <button
-                        title="View Detail"
-                        className="p-1.5 text-zinc-400 hover:text-emerald-500 hover:bg-emerald-500/10 rounded-md transition-all"
-                      >
-                        <Search className="w-4 h-4" />
-                      </button>
-                      <button
-                        title="Edit Target"
-                        className="p-1.5 text-zinc-400 hover:text-blue-500 hover:bg-blue-500/10 rounded-md transition-all mr-2"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
+                    <td className="p-5 pr-6">
+                      <div className="flex justify-end items-center gap-2">
+                        {/* FIX: Tombol Action (Landed & Rugged) di Kiri, pake style unlucky-treefrog-77, Emoji diganti Lucide Icons */}
+                        {!isFinished && (
+                          <div className="flex items-center gap-2 border-r border-zinc-200 dark:border-zinc-700 pr-3 mr-1">
+                            <button
+                              onClick={() => {
+                                setSelectedAirdropId(item.id);
+                                setLandingModalOpen(true);
+                              }}
+                              disabled={isPending}
+                              className="relative inline-flex items-center justify-center px-3 py-1.5 text-[10px] font-black tracking-widest text-emerald-500 transition-all duration-300 bg-zinc-100 dark:bg-[#18181b] rounded border border-emerald-500/20 hover:border-emerald-500 hover:text-emerald-400 hover:shadow-[inset_0_0_10px_rgba(16,185,129,0.2),_0_0_15px_rgba(16,185,129,0.3)] disabled:opacity-50 overflow-hidden"
+                            >
+                              <Banknote className="w-3.5 h-3.5 mr-1.5" /> LANDED
+                            </button>
+                            <button
+                              onClick={() =>
+                                startTransition(() => {
+                                  markAsRugged(item.id);
+                                })
+                              }
+                              disabled={isPending}
+                              className="relative inline-flex items-center justify-center px-3 py-1.5 text-[10px] font-black tracking-widest text-red-500 transition-all duration-300 bg-zinc-100 dark:bg-[#18181b] rounded border border-red-500/20 hover:border-red-500 hover:text-red-400 hover:shadow-[inset_0_0_10px_rgba(239,68,68,0.2),_0_0_15px_rgba(239,68,68,0.3)] disabled:opacity-50 overflow-hidden"
+                            >
+                              <Skull className="w-3.5 h-3.5 mr-1.5" /> RUGGED
+                            </button>
+                          </div>
+                        )}
 
-                      {!isFinished && (
-                        <div className="flex items-center gap-2 border-l border-zinc-200 dark:border-zinc-800 pl-3">
-                          <button
-                            onClick={() => {
-                              setSelectedAirdropId(item.id);
-                              setLandingModalOpen(true);
-                            }}
-                            disabled={isPending}
-                            className="px-3 py-1.5 text-[10px] font-bold text-emerald-500 border border-emerald-500/50 rounded-lg hover:bg-emerald-500 hover:text-white transition-all disabled:opacity-50"
-                          >
-                            LANDED 💸
-                          </button>
-                          <button
-                            onClick={() =>
-                              startTransition(() => {
-                                markAsRugged(item.id);
-                              })
-                            }
-                            disabled={isPending}
-                            className="px-3 py-1.5 text-[10px] font-bold text-red-500 border border-red-500/50 rounded-lg hover:bg-red-500 hover:text-white transition-all disabled:opacity-50"
-                          >
-                            RUGGED 💀
-                          </button>
-                        </div>
-                      )}
+                        {/* FIX: Tombol Management (Detail & Edit) di Paling Kanan */}
+                        <button
+                          onClick={() => {
+                            setSelectedAirdropData(item);
+                            setViewModalOpen(true);
+                          }}
+                          title="View Detail"
+                          className="p-1.5 text-zinc-400 hover:text-emerald-500 hover:bg-emerald-500/10 rounded-md transition-all"
+                        >
+                          <Search className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => {
+                            setSelectedAirdropData(item);
+                            setEditModalOpen(true);
+                          }}
+                          title="Edit Target"
+                          className="p-1.5 text-zinc-400 hover:text-blue-500 hover:bg-blue-500/10 rounded-md transition-all"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -327,7 +314,7 @@ export default function AirdropClientTable({
         </GlassCard>
       </div>
 
-      {/* --- MOBILE CARD VIEW (hidden on desktop) --- */}
+      {/* --- MOBILE CARD VIEW (Fully Responsive & Clean) --- */}
       <div className="md:hidden space-y-4">
         {currentData.map((item) => {
           const isDone =
@@ -338,91 +325,98 @@ export default function AirdropClientTable({
             item.status === "LANDED" || item.status === "RUGGED";
 
           return (
-            <GlassCard key={item.id} className="p-5 space-y-5">
-              {/* Mobile Header: Checkbox + Project Name */}
-              <div className="flex items-center gap-3 border-b border-zinc-200 dark:border-zinc-800 pb-4">
-                <UiverseCheckbox
-                  checked={selectedIds.includes(item.id)}
-                  onChange={() => toggleSelect(item.id)}
-                />
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <p className="font-extrabold text-zinc-900 dark:text-zinc-50 text-lg truncate flex-1">
+            <GlassCard
+              key={item.id}
+              className="p-5 flex flex-col gap-4 border border-zinc-200 dark:border-zinc-800/80 shadow-md"
+            >
+              {/* Top: Checkbox, Name, Status Badge */}
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-3 overflow-hidden">
+                  <div className="mt-1">
+                    <UiverseCheckbox
+                      checked={selectedIds.includes(item.id)}
+                      onChange={() => toggleSelect(item.id)}
+                    />
+                  </div>
+                  <div className="flex flex-col truncate">
+                    <p className="font-extrabold text-zinc-900 dark:text-zinc-50 text-base truncate">
                       {item.airdropName}
                     </p>
-                    {item.tokenTicker && (
-                      <span className="px-2.5 py-1 text-[10px] font-black bg-zinc-200 dark:bg-zinc-700 rounded-md text-zinc-600 dark:text-zinc-300">
-                        {item.tokenTicker}
-                      </span>
-                    )}
+                    <div className="flex items-center gap-2 mt-1">
+                      {item.tokenTicker && (
+                        <span className="px-2 py-0.5 text-[10px] font-black bg-zinc-200 dark:bg-zinc-700 rounded text-zinc-600 dark:text-zinc-300">
+                          {item.tokenTicker}
+                        </span>
+                      )}
+                      <p className="text-[10px] text-zinc-500 flex items-center gap-1">
+                        <CalendarDays className="w-3 h-3" />{" "}
+                        {new Date(item.taskDate).toLocaleDateString()}
+                      </p>
+                    </div>
                   </div>
-                  <p className="text-xs text-zinc-500 mt-1 flex items-center gap-2">
-                    <CalendarDays className="w-3 h-3 text-emerald-500" />{" "}
-                    {new Date(item.taskDate).toLocaleDateString()}
-                  </p>
                 </div>
-              </div>
-
-              {/* Mobile Body: Contacts & Chain */}
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div className="space-y-1.5 col-span-2">
-                  <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest">
-                    Network / Chain
-                  </p>
-                  <span className="px-3 py-1 text-xs font-bold rounded-md bg-zinc-200/50 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 inline-flex items-center gap-2">
-                    <BarChart3 className="w-3.5 h-3.5" /> {item.chain}
+                <div className="flex flex-col items-end shrink-0">
+                  <span
+                    className={`inline-block px-2 py-1 text-[9px] font-black tracking-wider uppercase rounded border text-center ${item.status === "LANDED" ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/30" : item.status === "RUGGED" ? "bg-red-500/10 text-red-500 border-red-500/30" : item.status === "DONE" ? "bg-blue-500/10 text-blue-500 border-blue-500/30" : "bg-orange-500/10 text-orange-500 border-orange-500/30"}`}
+                  >
+                    {item.status.replace("_", " ")}
                   </span>
-                </div>
-
-                <div className="col-span-2 space-y-3 pt-1">
-                  <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest">
-                    Contact Info
-                  </p>
-                  <div className="grid grid-cols-2 gap-3 flex-wrap">
-                    {/* Larger Contact Badges with Real Icons */}
-                    {item.wallet && (
-                      <div
-                        title={item.wallet}
-                        className="flex items-center gap-2 text-xs text-zinc-900 dark:text-zinc-100 font-mono bg-zinc-200/50 dark:bg-zinc-800 px-3 py-1.5 rounded-lg border border-zinc-300/50 dark:border-zinc-700/50 truncate"
-                      >
-                        <Wallet className="w-4 h-4 text-emerald-500" />{" "}
-                        {item.wallet.slice(0, 6)}...{item.wallet.slice(-4)}
-                      </div>
-                    )}
-                    {item.xHandle && (
-                      <div
-                        title={item.xHandle}
-                        className="flex items-center gap-2 text-xs text-zinc-900 dark:text-zinc-100 bg-zinc-200/50 dark:bg-zinc-800 px-3 py-1.5 rounded-lg border border-zinc-300/50 dark:border-zinc-700/50"
-                      >
-                        <Twitter className="w-4 h-4 text-blue-400" /> Twitter
-                      </div>
-                    )}
-                    {item.telegram && (
-                      <div
-                        title={item.telegram}
-                        className="flex items-center gap-2 text-xs text-zinc-900 dark:text-zinc-100 bg-zinc-200/50 dark:bg-zinc-800 px-3 py-1.5 rounded-lg border border-zinc-300/50 dark:border-zinc-700/50"
-                      >
-                        <Send className="w-4 h-4 text-sky-400" /> Telegram
-                      </div>
-                    )}
-                    {item.contactEmail && (
-                      <div
-                        title={item.contactEmail}
-                        className="flex items-center gap-2 text-xs text-zinc-900 dark:text-zinc-100 bg-zinc-200/50 dark:bg-zinc-800 px-3 py-1.5 rounded-lg border border-zinc-300/50 dark:border-zinc-700/50"
-                      >
-                        <Mail className="w-4 h-4 text-amber-500" /> Email
-                      </div>
-                    )}
-                  </div>
+                  {item.status === "LANDED" && item.landedValue && (
+                    <p className="text-[10px] font-black text-emerald-500 mt-1">
+                      +${item.landedValue}
+                    </p>
+                  )}
                 </div>
               </div>
 
-              {/* Mobile Footer: Status, Toggle, & Actions */}
-              <div className="border-t border-zinc-200 dark:border-zinc-800 pt-4 mt-2 grid grid-cols-2 gap-4 items-center">
-                <div className="space-y-2">
-                  <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest text-left">
+              {/* Middle: Chain & Contacts Grid */}
+              <div className="bg-zinc-100/50 dark:bg-zinc-900/50 rounded-xl p-3 grid grid-cols-1 sm:grid-cols-2 gap-3 border border-zinc-200 dark:border-zinc-800">
+                <div className="flex items-center gap-2 text-xs font-bold text-zinc-700 dark:text-zinc-300">
+                  <BarChart3 className="w-4 h-4 text-emerald-500" />{" "}
+                  {item.chain}
+                </div>
+                {item.wallet && (
+                  <div className="flex items-center gap-2 text-xs font-mono text-zinc-500 dark:text-zinc-400 truncate">
+                    <Wallet className="w-4 h-4 shrink-0" />{" "}
+                    {item.wallet.slice(0, 8)}...{item.wallet.slice(-4)}
+                  </div>
+                )}
+                <div className="flex gap-4 sm:col-span-2 pt-1 border-t border-zinc-200 dark:border-zinc-800">
+                  {item.xHandle && (
+                    <span
+                      title={`X: ${item.xHandle}`}
+                      className="flex items-center gap-1.5 text-xs text-zinc-500"
+                    >
+                      <Twitter className="w-3.5 h-3.5 text-blue-400" />{" "}
+                      {item.xHandle}
+                    </span>
+                  )}
+                  {item.telegram && (
+                    <span
+                      title={`TG: ${item.telegram}`}
+                      className="flex items-center gap-1.5 text-xs text-zinc-500"
+                    >
+                      <Send className="w-3.5 h-3.5 text-sky-400" />{" "}
+                      {item.telegram}
+                    </span>
+                  )}
+                  {item.contactEmail && (
+                    <span
+                      title={`Email: ${item.contactEmail}`}
+                      className="flex items-center gap-1.5 text-xs text-zinc-500"
+                    >
+                      <Mail className="w-3.5 h-3.5 text-amber-500" /> Email
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Bottom: Toggle & Action Buttons */}
+              <div className="flex items-center justify-between gap-2 mt-2">
+                <div className="flex items-center gap-3">
+                  <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">
                     Done?
-                  </p>
+                  </span>
                   <NeonToggle
                     isOn={isDone}
                     onToggle={() => {
@@ -433,104 +427,100 @@ export default function AirdropClientTable({
                     }}
                   />
                 </div>
-                <div className="flex flex-col items-end space-y-1.5">
-                  <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest text-right">
-                    Status
-                  </p>
-                  <span
-                    className={`inline-block px-3 py-1.5 text-[10px] font-black tracking-wider uppercase rounded-lg border text-center ${
-                      item.status === "LANDED"
-                        ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/30 shadow-[0_0_10px_rgba(16,185,129,0.2)]"
-                        : item.status === "RUGGED"
-                          ? "bg-red-500/10 text-red-500 border-red-500/30"
-                          : item.status === "DONE"
-                            ? "bg-blue-500/10 text-blue-500 border-blue-500/30"
-                            : "bg-orange-500/10 text-orange-500 border-orange-500/30"
-                    }`}
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      setSelectedAirdropData(item);
+                      setViewModalOpen(true);
+                    }}
+                    className="p-2 text-zinc-400 bg-zinc-100 dark:bg-zinc-800 rounded-lg hover:text-emerald-500 transition-colors"
                   >
-                    {item.status.replace("_", " ")}
-                  </span>
-                  {item.status === "LANDED" && item.landedValue && (
-                    <p className="text-xs font-black text-emerald-500 mt-0.5">
-                      +${item.landedValue}
-                    </p>
-                  )}
+                    <Search className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => {
+                      setSelectedAirdropData(item);
+                      setEditModalOpen(true);
+                    }}
+                    className="p-2 text-zinc-400 bg-zinc-100 dark:bg-zinc-800 rounded-lg hover:text-blue-500 transition-colors"
+                  >
+                    <Edit className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
 
-              {/* Mobile Actions Button Group */}
-              <div className="grid grid-cols-2 gap-3 pt-1">
-                <button
-                  title="View Detail"
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2 text-xs font-bold bg-zinc-200 dark:bg-zinc-800 rounded-xl hover:bg-emerald-500 hover:text-white transition-colors"
-                >
-                  <Search className="w-4 h-4" /> DETAIL
-                </button>
-                <button
-                  title="Edit Target"
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2 text-xs font-bold bg-zinc-200 dark:bg-zinc-800 rounded-xl hover:bg-blue-500 hover:text-white transition-colors"
-                >
-                  <Edit className="w-4 h-4" /> EDIT
-                </button>
-
-                {!isFinished && (
-                  <>
-                    <button
-                      onClick={() => {
-                        setSelectedAirdropId(item.id);
-                        setLandingModalOpen(true);
-                      }}
-                      disabled={isPending}
-                      className="w-full px-4 py-2.5 text-[10px] font-black tracking-wider text-emerald-500 bg-emerald-500/10 border border-emerald-500/30 rounded-xl hover:bg-emerald-500 hover:text-white transition-all duration-300 active:scale-95 disabled:opacity-50"
-                    >
-                      LANDED 💸
-                    </button>
-                    <button
-                      onClick={() =>
-                        startTransition(() => {
-                          markAsRugged(item.id);
-                        })
-                      }
-                      disabled={isPending}
-                      className="w-full px-4 py-2.5 text-[10px] font-black tracking-wider text-red-500 bg-red-500/10 border border-red-500/30 rounded-xl hover:bg-red-500 hover:text-white transition-all duration-300 active:scale-95 disabled:opacity-50"
-                    >
-                      RUGGED 💀
-                    </button>
-                  </>
-                )}
-              </div>
+              {/* Quick Status Buttons (Full Width in Mobile) */}
+              {!isFinished && (
+                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-zinc-200 dark:border-zinc-800">
+                  <button
+                    onClick={() => {
+                      setSelectedAirdropId(item.id);
+                      setLandingModalOpen(true);
+                    }}
+                    disabled={isPending}
+                    className="relative flex items-center justify-center gap-2 px-3 py-2.5 text-[10px] font-black tracking-widest text-emerald-500 bg-zinc-100 dark:bg-[#18181b] rounded-lg border border-emerald-500/20 shadow-[inset_0_0_5px_rgba(16,185,129,0.1)] hover:border-emerald-500 hover:shadow-[inset_0_0_10px_rgba(16,185,129,0.2),_0_0_15px_rgba(16,185,129,0.3)] transition-all active:scale-95 disabled:opacity-50"
+                  >
+                    <Banknote className="w-4 h-4" /> LANDED
+                  </button>
+                  <button
+                    onClick={() =>
+                      startTransition(() => {
+                        markAsRugged(item.id);
+                      })
+                    }
+                    disabled={isPending}
+                    className="relative flex items-center justify-center gap-2 px-3 py-2.5 text-[10px] font-black tracking-widest text-red-500 bg-zinc-100 dark:bg-[#18181b] rounded-lg border border-red-500/20 shadow-[inset_0_0_5px_rgba(239,68,68,0.1)] hover:border-red-500 hover:shadow-[inset_0_0_10px_rgba(239,68,68,0.2),_0_0_15px_rgba(239,68,68,0.3)] transition-all active:scale-95 disabled:opacity-50"
+                  >
+                    <Skull className="w-4 h-4" /> RUGGED
+                  </button>
+                </div>
+              )}
             </GlassCard>
           );
         })}
       </div>
 
-      {/* Pagination Controls (Always centered and properly sized) */}
+      {/* Pagination Controls */}
       {totalPages > 1 && (
-        <div className="flex justify-center items-center gap-3 pt-6 border-t border-zinc-200 dark:border-zinc-800 mt-6 relative z-10">
+        <div className="flex justify-center items-center gap-4 pt-4">
           <button
             onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
             disabled={currentPage === 1}
-            className="group flex items-center gap-2 px-5 py-2.5 text-sm font-bold bg-zinc-200 dark:bg-zinc-800 rounded-xl disabled:opacity-30 disabled:cursor-not-allowed hover:bg-emerald-500 hover:text-white transition-colors shadow-sm duration-300"
+            className="px-4 py-2 text-sm font-bold bg-zinc-200 dark:bg-zinc-800 rounded-lg disabled:opacity-30 hover:bg-emerald-500 hover:text-white transition-colors"
           >
-            &lt;
+            PREV
           </button>
-          <span className="text-sm font-bold bg-zinc-200 dark:bg-zinc-800 px-4 py-2 rounded-lg">
+          <span className="text-sm font-bold">
             {currentPage} / {totalPages}
           </span>
           <button
             onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
             disabled={currentPage === totalPages}
-            className="group flex items-center gap-2 px-5 py-2.5 text-sm font-bold bg-zinc-200 dark:bg-zinc-800 rounded-xl disabled:opacity-30 disabled:cursor-not-allowed hover:bg-emerald-500 hover:text-white transition-colors shadow-sm duration-300"
+            className="px-4 py-2 text-sm font-bold bg-zinc-200 dark:bg-zinc-800 rounded-lg disabled:opacity-30 hover:bg-emerald-500 hover:text-white transition-colors"
           >
-            &gt;
+            NEXT
           </button>
         </div>
       )}
 
-      {/* Modal Input Dollar (Uiverse Glass Modal style) */}
+      {/* Modals */}
+      <DetailModal
+        isOpen={viewModalOpen}
+        onClose={() => setViewModalOpen(false)}
+        data={selectedAirdropData}
+      />
+      <EditModal
+        isOpen={editModalOpen}
+        onClose={() => setEditModalOpen(false)}
+        data={selectedAirdropData}
+        userId={userId}
+      />
+
+      {/* Modal Landed Dollar */}
       <AnimatePresence>
         {landingModalOpen && (
-          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -542,15 +532,14 @@ export default function AirdropClientTable({
               initial={{ scale: 0.9, opacity: 0, y: 20 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              className="relative w-full max-w-sm rounded-3xl border border-white/10 bg-zinc-50 dark:bg-zinc-900/95 p-8 shadow-[0_0_50px_rgba(16,185,129,0.3)] backdrop-blur-xl"
+              className="relative w-full max-w-sm rounded-3xl border border-emerald-500/30 bg-zinc-900 p-8 shadow-[0_0_50px_rgba(16,185,129,0.3)]"
             >
-              <h3 className="text-2xl font-extrabold text-zinc-900 dark:text-zinc-50 mb-2">
+              <h3 className="text-2xl font-extrabold text-white mb-2">
                 Congratz Bro! 🎉
               </h3>
-              <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-6">
+              <p className="text-sm text-zinc-400 mb-6">
                 Cair berapa dollar nih dari target ini?
               </p>
-
               <form onSubmit={handleLandedSubmit}>
                 <UiverseInput
                   id="dollar"
@@ -562,18 +551,18 @@ export default function AirdropClientTable({
                   onChange={(e) => setDollarInput(e.target.value)}
                   startIcon={<Grip />}
                 />
-                <div className="flex justify-end gap-3 mt-10 pt-5 border-t border-zinc-200 dark:border-zinc-800">
+                <div className="flex justify-end gap-3 mt-8">
                   <button
                     type="button"
                     onClick={() => setLandingModalOpen(false)}
-                    className="px-5 py-2 text-sm font-bold text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 transition-colors"
+                    className="px-4 py-2 text-sm font-bold text-zinc-400"
                   >
                     CANCEL
                   </button>
                   <button
                     type="submit"
                     disabled={isPending}
-                    className="px-7 py-2.5 text-sm font-bold text-white bg-emerald-500 rounded-xl hover:bg-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.5)] transition-all"
+                    className="px-6 py-2 text-sm font-bold text-white bg-emerald-500 rounded-lg hover:bg-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.5)]"
                   >
                     SAVE 💸
                   </button>
