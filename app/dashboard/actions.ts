@@ -156,13 +156,15 @@ export async function markAsLanded(id: string, dollarValue: number) {
   const uid = await requireUserId();
 
   const val = Number(dollarValue);
-  if (Number.isNaN(val)) throw new Error("Invalid landedValue");
+  if (!Number.isFinite(val) || val <= 0) {
+    throw new Error("Landed value must be > 0");
+  }
 
   await prisma.airdrop.update({
     where: { id, userId: uid },
     data: {
       status: Status.LANDED,
-      landedValue: val,
+      landedValue: val, // Float? => decimal aman
       landedAt: new Date(),
       ruggedAt: null,
     },

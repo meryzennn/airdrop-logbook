@@ -401,14 +401,16 @@ export const DetailModal = ({ isOpen, onClose, data }: any) => {
                   value={fmtDateTime(data.updatedAt)}
                 />
 
-                <div className="bg-zinc-900/40 border border-white/10 rounded-2xl p-3">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">
-                    Landed Value
-                  </p>
-                  <p className="mt-1 font-black text-zinc-100">
-                    {data.landedValue ? `$${data.landedValue}` : "-"}
-                  </p>
-                </div>
+                {data.status === "LANDED" && data.landedValue != null && (
+                  <div className="bg-zinc-900/40 border border-white/10 rounded-2xl p-3">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">
+                      Landed Value
+                    </p>
+                    <p className="mt-1 font-black text-zinc-100">
+                      ${data.landedValue}
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
 

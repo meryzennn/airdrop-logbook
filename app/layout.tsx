@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import Footer from "@/components/Footer";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -18,7 +19,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${inter.className} bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-50`}
+        className={`${inter.className} bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-50 min-h-screen`}
       >
         <ThemeProvider
           attribute="class"
@@ -26,7 +27,11 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {children}
+          {/* main content */}
+          <div className="min-h-screen flex flex-col">
+            <main className="flex-1">{children}</main>
+            <Footer />
+          </div>
         </ThemeProvider>
       </body>
     </html>

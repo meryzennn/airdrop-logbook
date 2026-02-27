@@ -20,7 +20,7 @@ import { UiverseCheckbox } from "@/components/ui/UiverseCheckbox";
 import AddAirdropModal from "./AddAirdropModal";
 import { DetailModal } from "./DetailModal";
 import { EditModal } from "./EditModal";
-
+import TableAnalytics from "./TableAnalytics";
 import {
   toggleDoneStatus,
   markAsLanded,
@@ -38,9 +38,10 @@ import {
   Skull,
   AlertTriangle,
   X as CloseIcon,
+  Search,
 } from "lucide-react";
 
-/* ---------------- Helpers: only show social icons if value exists ---------------- */
+/* ---------- helpers ---------- */
 const clean = (s?: string) => (s || "").trim();
 
 const cleanX = (s?: string) => clean(s).replace(/^@/, "");
@@ -65,6 +66,15 @@ const mailUrl = (s?: string) => {
   return `mailto:${v}`;
 };
 
+const formatUSD = (n: number) =>
+  new Intl.NumberFormat("en-US", { maximumFractionDigits: 6 }).format(n);
+
+const safeTime = (v: any) => {
+  const d = new Date(v);
+  const t = d.getTime();
+  return Number.isFinite(t) ? t : 0;
+};
+
 const XLogo = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
     <path d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932ZM17.61 20.644h2.039L6.486 3.24H4.298Z" />
@@ -79,7 +89,6 @@ const DeleteBinWrap = styled.div`
     border-radius: 999px;
     background-color: rgb(20, 20, 20);
     border: none;
-    font-weight: 600;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -101,7 +110,6 @@ const DeleteBinWrap = styled.div`
     fill: white;
   }
 
-  /* Hover only if enabled */
   .button:not(:disabled):hover {
     width: 150px;
     border-radius: 999px;
@@ -116,18 +124,15 @@ const DeleteBinWrap = styled.div`
     transition-duration: 0.3s;
     transform: translateY(60%);
   }
-
   .bin-top {
     transform-origin: bottom right;
   }
-
   .button:not(:disabled):hover .bin-top {
     width: 50px;
     transition-duration: 0.3s;
     transform: translateY(60%) rotate(160deg);
   }
 
-  /* label */
   .button::before {
     position: absolute;
     top: -20px;
@@ -214,6 +219,327 @@ function DeleteBinButton({
   );
 }
 
+/* ---------------- UIverse Filter Button ---------------- */
+const FilterBtnWrap = styled.div`
+  .filter {
+    width: 50px;
+    height: 50px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    cursor: pointer;
+    background: rgba(24, 24, 27, 0.6);
+    box-shadow: 0px 10px 10px rgba(0, 0, 0, 0.08);
+    transition: all 0.25s;
+  }
+
+  .filter svg {
+    height: 16px;
+    fill: rgb(161, 161, 170);
+    transition: all 0.25s;
+  }
+
+  .filter:hover {
+    box-shadow: 0px 12px 18px rgba(0, 0, 0, 0.2);
+    background-color: rgb(59, 59, 59);
+    border-color: rgba(16, 185, 129, 0.3);
+  }
+
+  .filter:hover svg {
+    fill: white;
+  }
+`;
+
+function FilterButton({
+  onClick,
+  active,
+  buttonRef,
+}: {
+  onClick: () => void;
+  active: boolean;
+  buttonRef: React.RefObject<HTMLButtonElement | null>;
+}) {
+  return (
+    <FilterBtnWrap>
+      <button
+        ref={buttonRef}
+        type="button"
+        title="filter"
+        onClick={onClick}
+        className={`filter ${active ? "ring-2 ring-emerald-500/30" : ""}`}
+        aria-label="Filter"
+      >
+        <svg viewBox="0 0 512 512" height="1em">
+          <path d="M0 416c0 17.7 14.3 32 32 32l54.7 0c12.3 28.3 40.5 48 73.3 48s61-19.7 73.3-48L480 448c17.7 0 32-14.3 32-32s-14.3-32-32-32l-246.7 0c-12.3-28.3-40.5-48-73.3-48s-61 19.7-73.3 48L32 384c-17.7 0-32 14.3-32 32zm128 0a32 32 0 1 1 64 0 32 32 0 1 1 -64 0zM320 256a32 32 0 1 1 64 0 32 32 0 1 1 -64 0zm32-80c-32.8 0-61 19.7-73.3 48L32 224c-17.7 0-32 14.3-32 32s14.3 32 32 32l246.7 0c12.3 28.3 40.5 48 73.3 48s61-19.7 73.3-48l54.7 0c17.7 0 32-14.3 32-32s-14.3-32-32-32l-54.7 0c-12.3-28.3-40.5-48-73.3-48zM192 128a32 32 0 1 1 0-64 32 32 0 1 1 0 64zm73.3-64C253 35.7 224.8 16 192 16s-61 19.7-73.3 48L32 64C14.3 64 0 78.3 0 96s14.3 32 32 32l86.7 0c12.3 28.3 40.5 48 73.3 48s61-19.7 73.3-48L480 128c17.7 0 32-14.3 32-32s-14.3-32-32-32L265.3 64z" />
+        </svg>
+      </button>
+    </FilterBtnWrap>
+  );
+}
+
+/* ---------------- Search (single, not split) ---------------- */
+const CosmicSearchWrap = styled.div`
+  .search {
+    position: relative;
+    width: 100%;
+    height: 60px;
+  }
+
+  .fx {
+    position: absolute;
+    inset: 0;
+    border-radius: 16px;
+    overflow: hidden;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .nebula,
+  .starfield,
+  .stardust,
+  .cosmic-ring {
+    position: absolute;
+    inset: 0;
+    border-radius: 16px;
+    pointer-events: none;
+  }
+
+  .nebula {
+    filter: blur(26px);
+    opacity: 0.35;
+  }
+  .nebula::before {
+    content: "";
+    position: absolute;
+    inset: -220px;
+    background-image: conic-gradient(
+      #000,
+      rgba(16, 185, 129, 0.9) 6%,
+      #000 35%,
+      #000 50%,
+      rgba(34, 197, 94, 0.85) 62%,
+      #000 88%
+    );
+    transform: rotate(60deg);
+    transition: transform 1.8s;
+  }
+
+  .starfield {
+    filter: blur(2px);
+    opacity: 0.85;
+  }
+  .starfield::before {
+    content: "";
+    position: absolute;
+    inset: -240px;
+    background-image: conic-gradient(
+      rgba(0, 0, 0, 0),
+      rgba(16, 185, 129, 0.18),
+      rgba(0, 0, 0, 0) 12%,
+      rgba(0, 0, 0, 0) 50%,
+      rgba(34, 197, 94, 0.22),
+      rgba(0, 0, 0, 0) 64%
+    );
+    transform: rotate(82deg);
+    transition: transform 1.8s;
+  }
+
+  .stardust {
+    filter: blur(1.4px);
+    opacity: 0.95;
+  }
+  .stardust::before {
+    content: "";
+    position: absolute;
+    inset: -260px;
+    background-image: conic-gradient(
+      rgba(0, 0, 0, 0),
+      rgba(16, 185, 129, 0.55),
+      rgba(0, 0, 0, 0) 10%,
+      rgba(0, 0, 0, 0) 50%,
+      rgba(34, 197, 94, 0.5),
+      rgba(0, 0, 0, 0) 60%
+    );
+    transform: rotate(83deg);
+    transition: transform 1.8s;
+  }
+
+  .cosmic-ring {
+    filter: blur(0.5px);
+    opacity: 1;
+  }
+  .cosmic-ring::before {
+    content: "";
+    position: absolute;
+    inset: -260px;
+    background-image: conic-gradient(
+      rgba(5, 7, 27, 1),
+      rgba(16, 185, 129, 0.9) 6%,
+      rgba(5, 7, 27, 1) 14%,
+      rgba(5, 7, 27, 1) 50%,
+      rgba(34, 197, 94, 0.9) 62%,
+      rgba(5, 7, 27, 1) 66%
+    );
+    transform: rotate(70deg);
+    transition: transform 1.8s;
+  }
+
+  .input {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    height: 60px;
+    border-radius: 16px;
+    background: rgba(9, 9, 11, 0.86);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: rgba(236, 253, 245, 0.95);
+    padding-left: 52px;
+    padding-right: 54px;
+    font-size: 13px;
+    font-weight: 900;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    outline: none;
+    transition:
+      box-shadow 0.25s,
+      border-color 0.25s,
+      background 0.25s;
+  }
+
+  .input::placeholder {
+    color: rgba(113, 113, 122, 0.9);
+    text-transform: none;
+    letter-spacing: 0.02em;
+    font-weight: 800;
+  }
+
+  .input:focus {
+    border-color: rgba(16, 185, 129, 0.35);
+    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.16);
+    background: rgba(9, 9, 11, 0.92);
+  }
+
+  .left-icon {
+    position: absolute;
+    z-index: 3;
+    left: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+    opacity: 0.95;
+  }
+
+  .right-icon-btn {
+    position: absolute;
+    z-index: 3;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    height: 40px;
+    width: 44px;
+    border-radius: 14px;
+    display: grid;
+    place-items: center;
+    background: rgba(16, 185, 129, 0.08);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .right-icon-btn:hover {
+    background: rgba(16, 185, 129, 0.14);
+    border-color: rgba(16, 185, 129, 0.32);
+  }
+
+  .right-icon-btn:active {
+    transform: translateY(-50%) scale(0.96);
+  }
+
+  .search:hover .starfield::before {
+    transform: rotate(-98deg);
+  }
+  .search:hover .stardust::before {
+    transform: rotate(-97deg);
+  }
+  .search:hover .cosmic-ring::before {
+    transform: rotate(-110deg);
+  }
+  .search:hover .nebula::before {
+    transform: rotate(-120deg);
+  }
+
+  .search:focus-within .starfield::before {
+    transform: rotate(442deg);
+    transition: transform 3.8s;
+  }
+  .search:focus-within .stardust::before {
+    transform: rotate(443deg);
+    transition: transform 3.8s;
+  }
+  .search:focus-within .cosmic-ring::before {
+    transform: rotate(430deg);
+    transition: transform 3.8s;
+  }
+  .search:focus-within .nebula::before {
+    transform: rotate(420deg);
+    transition: transform 3.8s;
+  }
+`;
+
+function CosmicSearchInput({
+  value,
+  onChange,
+  onSearch,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  onSearch: () => void;
+}) {
+  return (
+    <CosmicSearchWrap>
+      <div className="search">
+        <div className="fx">
+          <div className="nebula" />
+          <div className="starfield" />
+          <div className="stardust" />
+          <div className="cosmic-ring" />
+        </div>
+
+        <span className="left-icon">
+          <Search size={18} className="text-emerald-300" />
+        </span>
+
+        <input
+          className="input"
+          type="text"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="Search intel..."
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              onSearch();
+            }
+          }}
+        />
+
+        <button
+          type="button"
+          className="right-icon-btn"
+          onClick={onSearch}
+          aria-label="Search"
+          title="Search"
+        >
+          <Search size={18} className="text-emerald-300" />
+        </button>
+      </div>
+    </CosmicSearchWrap>
+  );
+}
+
 /* ---------------- Hamburger Button ---------------- */
 const HamburgerButton = styled.button`
   cursor: pointer;
@@ -259,15 +585,22 @@ const HamburgerButton = styled.button`
   }
 `;
 
-/* ---------------- Menu Portal (always clickable, never clipped) ---------------- */
-type MenuPortalProps = {
+/* ---------------- Desktop Popover Portal ---------------- */
+type PopoverProps = {
   open: boolean;
   anchorEl: HTMLElement | null;
   onClose: () => void;
+  width?: number;
   children: React.ReactNode;
 };
 
-function MenuPortal({ open, anchorEl, onClose, children }: MenuPortalProps) {
+function PopoverPortal({
+  open,
+  anchorEl,
+  onClose,
+  width = 380,
+  children,
+}: PopoverProps) {
   const [mounted, setMounted] = useState(false);
   const [pos, setPos] = useState({ top: 0, left: 0 });
 
@@ -275,32 +608,28 @@ function MenuPortal({ open, anchorEl, onClose, children }: MenuPortalProps) {
     if (!anchorEl) return;
 
     const rect = anchorEl.getBoundingClientRect();
-    const menuW = 192; // w-48
-    const menuH = 132;
+    const w = Math.min(width, window.innerWidth - 16);
     const gap = 10;
 
-    // nempel ke tombol (pojok kanan bawah tombol)
-    let left = rect.left + rect.width - menuW;
-    left = Math.max(8, Math.min(left, window.innerWidth - menuW - 8));
+    let left = rect.right - w;
+    left = Math.max(8, Math.min(left, window.innerWidth - w - 8));
 
     let top = rect.bottom + gap;
-    if (top + menuH > window.innerHeight) {
-      top = Math.max(8, rect.top - gap - menuH);
+    const maxH = 560;
+    if (top + maxH > window.innerHeight) {
+      top = Math.max(8, rect.top - gap - maxH);
     }
 
     setPos({ top, left });
-  }, [anchorEl]);
+  }, [anchorEl, width]);
 
   useEffect(() => setMounted(true), []);
 
   useEffect(() => {
     if (!open) return;
-
     updatePos();
 
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     const onResize = () => updatePos();
     const onScroll = () => updatePos();
 
@@ -325,8 +654,148 @@ function MenuPortal({ open, anchorEl, onClose, children }: MenuPortalProps) {
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         onMouseDown={onClose}
+        className="fixed inset-0 z-[9996] bg-transparent"
+      />
+      <motion.div
+        key="popover"
+        initial={{ opacity: 0, scale: 0.98, y: 8 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.98, y: 8 }}
+        transition={{ duration: 0.14 }}
+        style={{ top: pos.top, left: pos.left, width }}
+        onMouseDown={(e) => e.stopPropagation()}
+        className="fixed z-[9997] rounded-3xl bg-zinc-950 border border-white/10 shadow-2xl overflow-hidden max-h-[80vh] overflow-y-auto"
+      >
+        {children}
+      </motion.div>
+    </AnimatePresence>,
+    document.body,
+  );
+}
+
+/* ---------------- Mobile Filter Sheet ---------------- */
+function FilterSheet({
+  open,
+  onClose,
+  children,
+}: {
+  open: boolean;
+  onClose: () => void;
+  children: React.ReactNode;
+}) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  if (!mounted || !open) return null;
+
+  return createPortal(
+    <AnimatePresence>
+      <motion.div
+        key="sheet-overlay"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={onClose}
+        className="fixed inset-0 z-[9996] bg-zinc-950/70 backdrop-blur-sm"
+      />
+      <motion.div
+        key="sheet"
+        initial={{ y: 40, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        exit={{ y: 40, opacity: 0 }}
+        transition={{ type: "spring", damping: 26, stiffness: 320 }}
+        onClick={(e) => e.stopPropagation()}
+        className="fixed left-0 right-0 bottom-0 z-[9997] rounded-t-[28px] border border-white/10 bg-zinc-950 shadow-2xl max-h-[85vh] overflow-y-auto"
+      >
+        <div className="sticky top-0 z-10 bg-zinc-950/90 backdrop-blur border-b border-white/5 px-5 py-4 flex items-center justify-between">
+          <p className="text-[11px] font-black uppercase tracking-widest text-zinc-200">
+            Filters
+          </p>
+          <button
+            type="button"
+            onClick={onClose}
+            className="h-9 w-9 rounded-2xl bg-zinc-900/60 border border-white/10 hover:border-red-500/30 grid place-items-center"
+            aria-label="Close"
+          >
+            <CloseIcon size={16} className="text-zinc-200" />
+          </button>
+        </div>
+        {children}
+      </motion.div>
+    </AnimatePresence>,
+    document.body,
+  );
+}
+
+/* ---------------- Menu Portal (uses PopoverPortal width=192) ---------------- */
+function MenuPortal({
+  open,
+  anchorEl,
+  onClose,
+  children,
+}: {
+  open: boolean;
+  anchorEl: HTMLElement | null;
+  onClose: () => void;
+  children: React.ReactNode;
+}) {
+  const [mounted, setMounted] = useState(false);
+  const [pos, setPos] = useState({ top: 0, left: 0 });
+
+  const updatePos = useCallback(() => {
+    if (!anchorEl) return;
+
+    const rect = anchorEl.getBoundingClientRect();
+    const menuW = 192; // w-48
+    const menuH = 140; // ✅ tinggi menu kecil, bukan 560
+    const gap = 10;
+
+    let left = rect.right - menuW;
+    left = Math.max(8, Math.min(left, window.innerWidth - menuW - 8));
+
+    let top = rect.bottom + gap;
+    if (top + menuH > window.innerHeight) {
+      top = rect.top - gap - menuH;
+    }
+    top = Math.max(8, Math.min(top, window.innerHeight - menuH - 8));
+
+    setPos({ top, left });
+  }, [anchorEl]);
+
+  useEffect(() => setMounted(true), []);
+
+  useEffect(() => {
+    if (!open || !anchorEl) return;
+
+    updatePos();
+
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    const onResize = () => updatePos();
+    const onScroll = () => updatePos();
+
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("resize", onResize);
+    window.addEventListener("scroll", onScroll, true);
+
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("resize", onResize);
+      window.removeEventListener("scroll", onScroll, true);
+    };
+  }, [open, anchorEl, onClose, updatePos]);
+
+  if (!mounted || !open || !anchorEl) return null;
+
+  return createPortal(
+    <AnimatePresence>
+      <motion.div
+        key="menu-overlay"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onMouseDown={onClose}
         className="fixed inset-0 z-[9998] bg-transparent"
       />
+
       <motion.div
         key="menu"
         initial={{ opacity: 0, scale: 0.96, y: 6 }}
@@ -344,6 +813,18 @@ function MenuPortal({ open, anchorEl, onClose, children }: MenuPortalProps) {
   );
 }
 
+/* ---------------- Main ---------------- */
+const STATUS_OPTIONS = [
+  "PLANNED",
+  "IN_PROGRESS",
+  "DONE",
+  "LANDED",
+  "RUGGED",
+  "ARCHIVED",
+] as const;
+
+type Status = (typeof STATUS_OPTIONS)[number];
+
 export default function AirdropClientTable({
   airdrops,
   userId,
@@ -352,44 +833,93 @@ export default function AirdropClientTable({
   userId: string;
 }) {
   const [isPending, startTransition] = useTransition();
+  const [menuAnchorEl, setMenuAnchorEl] = useState<HTMLElement | null>(null);
+  // Search: draft -> click icon / enter -> commit
+  const [searchDraft, setSearchDraft] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const commitSearch = useCallback(() => {
+    setSearchQuery((searchDraft || "").trim());
+  }, [searchDraft]);
+  const fmtTicker = (t?: string) => {
+    const v = clean(t);
+    if (!v) return "";
+    return v.startsWith("$") ? v : `$${v}`;
+  };
+  // Filter UI
+  const [filterOpen, setFilterOpen] = useState(false);
+  const filterBtnRef = useRef<HTMLButtonElement | null>(null);
+
+  // chain filter stores normalized key (lowercase)
+  const [chainKey, setChainKey] = useState<string>("ALL");
+  const [statusSet, setStatusSet] = useState<Set<Status>>(new Set()); // empty => all
+  const [fromISO, setFromISO] = useState<string>(""); // YYYY-MM-DD
+  const [toISO, setToISO] = useState<string>(""); // YYYY-MM-DD
+
+  // mobile/desktop helpers
+  const [isMobile, setIsMobile] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(false);
+
+  useEffect(() => {
+    const mqMobile = window.matchMedia("(max-width: 767px)");
+    const applyMobile = () => setIsMobile(mqMobile.matches);
+    applyMobile();
+    if (mqMobile.addEventListener)
+      mqMobile.addEventListener("change", applyMobile);
+    else mqMobile.addListener(applyMobile);
+
+    const mqDesktop = window.matchMedia("(min-width: 768px)");
+    const applyDesktop = () => setIsDesktop(mqDesktop.matches);
+    applyDesktop();
+    if (mqDesktop.addEventListener)
+      mqDesktop.addEventListener("change", applyDesktop);
+    else mqDesktop.addListener(applyDesktop);
+
+    return () => {
+      if (mqMobile.removeEventListener)
+        mqMobile.removeEventListener("change", applyMobile);
+      else mqMobile.removeListener(applyMobile);
+
+      if (mqDesktop.removeEventListener)
+        mqDesktop.removeEventListener("change", applyDesktop);
+      else mqDesktop.removeListener(applyDesktop);
+    };
+  }, []);
+
+  // lock scroll while filter open (mobile bug fix)
+  useEffect(() => {
+    if (!filterOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev || "unset";
+    };
+  }, [filterOpen]);
+
+  // pagination
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
+  // selection
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
 
-  // menu portal (FIX: desktop & mobile anchor dipisah)
+  // menu portal anchor (desktop & mobile)
   type AnchorMap = Record<
     string,
     { desktop?: HTMLDivElement | null; mobile?: HTMLDivElement | null }
   >;
-
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
   const menuAnchorRefs = useRef<AnchorMap>({});
-  const [isDesktop, setIsDesktop] = useState(false);
-
-  useEffect(() => {
-    const mq = window.matchMedia("(min-width: 768px)");
-    const apply = () => setIsDesktop(mq.matches);
-    apply();
-
-    if (mq.addEventListener) mq.addEventListener("change", apply);
-    else mq.addListener(apply);
-
-    return () => {
-      if (mq.removeEventListener) mq.removeEventListener("change", apply);
-      else mq.removeListener(apply);
-    };
-  }, []);
 
   // overlays
   const [showRuggedOverlay, setShowRuggedOverlay] = useState(false);
   const [showLandedOverlay, setShowLandedOverlay] = useState(false);
 
-  // landed modal input
+  // landed modal input + validation
   const [landingModalOpen, setLandingModalOpen] = useState(false);
   const [selectedAirdropId, setSelectedAirdropId] = useState("");
   const [dollarInput, setDollarInput] = useState("");
+  const [landedError, setLandedError] = useState<string | null>(null);
 
   // view/edit modal
   const [viewModalOpen, setViewModalOpen] = useState(false);
@@ -398,24 +928,13 @@ export default function AirdropClientTable({
     null,
   );
 
-  const totalPages = Math.ceil(airdrops.length / itemsPerPage);
-
-  const currentData = useMemo(
-    () =>
-      airdrops.slice(
-        (currentPage - 1) * itemsPerPage,
-        currentPage * itemsPerPage,
-      ),
-    [airdrops, currentPage],
-  );
-
+  // active item for menu
   const activeItem = useMemo(() => {
     if (!activeMenuId) return null;
     return airdrops.find((x) => x.id === activeMenuId) ?? null;
   }, [activeMenuId, airdrops]);
 
-  // pick correct anchor (desktop vs mobile) + fallback if rect=0
-  const resolvedAnchorEl = useMemo(() => {
+  const resolvedMenuAnchorEl = useMemo(() => {
     if (!activeMenuId) return null;
     const refs = menuAnchorRefs.current[activeMenuId];
     if (!refs) return null;
@@ -435,6 +954,124 @@ export default function AirdropClientTable({
     return (primary ?? secondary ?? null) as HTMLElement | null;
   }, [activeMenuId, isDesktop]);
 
+  // chain options derived dynamically
+  const chainOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const a of airdrops) {
+      const c = clean(a?.chain);
+      if (!c) continue;
+      const k = c.toLowerCase();
+      if (!map.has(k)) map.set(k, c);
+    }
+    return Array.from(map.entries())
+      .map(([key, label]) => ({ key, label }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [airdrops]);
+
+  const clearFilters = () => {
+    setChainKey("ALL");
+    setStatusSet(new Set());
+    setFromISO("");
+    setToISO("");
+  };
+
+  const toggleStatus = (s: Status) => {
+    setStatusSet((prev) => {
+      const next = new Set(prev);
+      if (next.has(s)) next.delete(s);
+      else next.add(s);
+      return next;
+    });
+  };
+
+  const quickStatus = (preset: "ALL" | "ACTIVE" | "FINISHED") => {
+    if (preset === "ALL") return setStatusSet(new Set());
+    if (preset === "ACTIVE")
+      return setStatusSet(new Set(["PLANNED", "IN_PROGRESS", "DONE"]));
+    return setStatusSet(new Set(["LANDED", "RUGGED"]));
+  };
+
+  // filter + search + sort (newest on top)
+  const filteredSorted = useMemo(() => {
+    let rows = [...airdrops];
+
+    // search (committed)
+    const q = clean(searchQuery).toLowerCase();
+    if (q) {
+      rows = rows.filter((a) => {
+        const blob = [
+          a.airdropName,
+          a.chain,
+          a.tokenTicker,
+          a.wallet,
+          a.websiteLink,
+          a.xHandle,
+          a.telegram,
+          a.contactEmail,
+          a.description,
+          a.status,
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+        return blob.includes(q);
+      });
+    }
+
+    // chain
+    if (chainKey !== "ALL") {
+      rows = rows.filter(
+        (a) => clean(a?.chain).toLowerCase() === chainKey.toLowerCase(),
+      );
+    }
+
+    // status
+    if (statusSet.size > 0) {
+      rows = rows.filter((a) => statusSet.has(a.status as Status));
+    }
+
+    // date range on taskDate (inclusive)
+    const fromT = fromISO ? safeTime(`${fromISO}T00:00:00`) : null;
+    const toT = toISO ? safeTime(`${toISO}T23:59:59`) : null;
+
+    if (fromT || toT) {
+      rows = rows.filter((a) => {
+        const t = safeTime(a.taskDate ?? a.createdAt);
+        if (fromT && t < fromT) return false;
+        if (toT && t > toT) return false;
+        return true;
+      });
+    }
+
+    // newest first
+    rows.sort((a, b) => {
+      const ta = safeTime(a.createdAt ?? a.taskDate);
+      const tb = safeTime(b.createdAt ?? b.taskDate);
+      return tb - ta;
+    });
+
+    return rows;
+  }, [airdrops, searchQuery, chainKey, statusSet, fromISO, toISO]);
+
+  // reset page when committed search/filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, chainKey, statusSet, fromISO, toISO]);
+
+  // pagination
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredSorted.length / itemsPerPage),
+  );
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+  }, [currentPage, totalPages]);
+
+  const currentData = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return filteredSorted.slice(start, start + itemsPerPage);
+  }, [filteredSorted, currentPage]);
+
   const toggleSelectAll = () =>
     selectedIds.length === currentData.length
       ? setSelectedIds([])
@@ -447,13 +1084,29 @@ export default function AirdropClientTable({
     setTimeout(() => setShowRuggedOverlay(false), 5000);
   };
 
+  const landedNum = useMemo(() => {
+    const v = parseFloat(dollarInput);
+    return Number.isFinite(v) ? v : NaN;
+  }, [dollarInput]);
+
+  const landedValid = Number.isFinite(landedNum) && landedNum > 0;
+
   const handleLandedSubmit = (e: FormEvent) => {
     e.preventDefault();
+    setLandedError(null);
+
+    if (!landedValid) {
+      setLandedError("Landed value must be > 0");
+      return;
+    }
+
     startTransition(() => {
-      markAsLanded(selectedAirdropId, Number(dollarInput || 0));
+      markAsLanded(selectedAirdropId, landedNum);
       setLandingModalOpen(false);
       setDollarInput("");
+      setSelectedAirdropId("");
       setActiveMenuId(null);
+
       setShowLandedOverlay(true);
       setTimeout(() => setShowLandedOverlay(false), 5000);
     });
@@ -467,9 +1120,137 @@ export default function AirdropClientTable({
     });
   };
 
+  // close menu when page change
   useEffect(() => {
     setActiveMenuId(null);
+    setMenuAnchorEl(null);
   }, [currentPage]);
+
+  // filter body (reused in popover/sheet)
+  const filterBody = (
+    <div className="p-5">
+      <div className="mb-4">
+        <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2">
+          Chain
+        </p>
+        <select
+          value={chainKey}
+          onChange={(e) => setChainKey(e.target.value)}
+          className="w-full h-11 rounded-2xl bg-zinc-900/60 border border-white/10 text-zinc-100 font-black text-[11px] uppercase tracking-widest px-4 outline-none focus:border-emerald-500/30"
+        >
+          <option value="ALL">All Chains</option>
+          {chainOptions.map((c) => (
+            <option key={c.key} value={c.key}>
+              {c.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="mb-4">
+        <div className="flex items-center justify-between mb-2 gap-3">
+          <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">
+            Status
+          </p>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => quickStatus("ALL")}
+              className="px-3 h-8 rounded-xl bg-zinc-900/60 border border-white/10 text-[10px] font-black uppercase tracking-widest text-zinc-300 hover:border-white/20"
+            >
+              All
+            </button>
+            <button
+              type="button"
+              onClick={() => quickStatus("ACTIVE")}
+              className="px-3 h-8 rounded-xl bg-zinc-900/60 border border-white/10 text-[10px] font-black uppercase tracking-widest text-zinc-300 hover:border-white/20"
+            >
+              Active
+            </button>
+            <button
+              type="button"
+              onClick={() => quickStatus("FINISHED")}
+              className="px-3 h-8 rounded-xl bg-zinc-900/60 border border-white/10 text-[10px] font-black uppercase tracking-widest text-zinc-300 hover:border-white/20"
+            >
+              Finish
+            </button>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          {STATUS_OPTIONS.map((s) => {
+            const on = statusSet.has(s);
+            return (
+              <button
+                key={s}
+                type="button"
+                onClick={() => toggleStatus(s)}
+                className={[
+                  "px-3 h-9 rounded-2xl border text-[10px] font-black uppercase tracking-widest transition-all active:scale-95",
+                  on
+                    ? s === "LANDED"
+                      ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/40"
+                      : s === "RUGGED"
+                        ? "bg-red-500/15 text-red-300 border-red-500/40"
+                        : "bg-white/10 text-zinc-100 border-white/20"
+                    : "bg-zinc-900/60 text-zinc-400 border-white/10 hover:border-white/20",
+                ].join(" ")}
+              >
+                {s.replaceAll("_", " ")}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="mb-5">
+        <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2">
+          Task Date Range
+        </p>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <p className="text-[9px] font-black uppercase tracking-widest text-zinc-500 mb-1">
+              From
+            </p>
+            <input
+              type="date"
+              value={fromISO}
+              onChange={(e) => setFromISO(e.target.value)}
+              className="w-full h-11 rounded-2xl bg-zinc-900/60 border border-white/10 text-zinc-100 font-black text-[11px] uppercase tracking-widest px-4 outline-none focus:border-emerald-500/30"
+            />
+          </div>
+          <div>
+            <p className="text-[9px] font-black uppercase tracking-widest text-zinc-500 mb-1">
+              To
+            </p>
+            <input
+              type="date"
+              value={toISO}
+              onChange={(e) => setToISO(e.target.value)}
+              className="w-full h-11 rounded-2xl bg-zinc-900/60 border border-white/10 text-zinc-100 font-black text-[11px] uppercase tracking-widest px-4 outline-none focus:border-emerald-500/30"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="flex gap-3">
+        <button
+          type="button"
+          onClick={clearFilters}
+          className="flex-1 h-11 rounded-2xl bg-zinc-900/60 border border-white/10 text-zinc-300 font-black text-[10px] uppercase tracking-widest hover:border-white/20 transition-all"
+        >
+          Clear
+        </button>
+        <button
+          type="button"
+          onClick={() => setFilterOpen(false)}
+          className="flex-1 h-11 rounded-2xl bg-emerald-500 text-zinc-950 font-black text-[10px] uppercase tracking-widest hover:bg-emerald-400 transition-all active:scale-95"
+        >
+          Apply
+        </button>
+      </div>
+    </div>
+  );
 
   if (airdrops.length === 0)
     return (
@@ -481,25 +1262,88 @@ export default function AirdropClientTable({
       </GlassCard>
     );
 
+  const showCount = filteredSorted.length;
+
   return (
     <div className="space-y-6 relative font-[var(--font-body)]">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-center gap-6 px-2">
-        <div className="flex items-center gap-4 w-full sm:w-auto">
-          <AddAirdropModal userId={userId} />
+      <div className="px-2 space-y-4">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="flex items-center gap-4 w-full md:w-auto">
+            <AddAirdropModal userId={userId} />
+            <DeleteBinButton
+              onClick={() => setDeleteModalOpen(true)}
+              disabled={selectedIds.length === 0 || isPending}
+              label={`DELETE (${selectedIds.length})`}
+            />
+          </div>
 
-          <DeleteBinButton
-            onClick={() => setDeleteModalOpen(true)}
-            disabled={selectedIds.length === 0 || isPending}
-            label={`DELETE (${selectedIds.length})`}
-          />
+          <div className="w-full md:max-w-[560px] flex items-center gap-3">
+            <div className="flex-1 min-w-0">
+              <CosmicSearchInput
+                value={searchDraft}
+                onChange={setSearchDraft}
+                onSearch={commitSearch}
+              />
+            </div>
+
+            <FilterButton
+              active={
+                filterOpen ||
+                chainKey !== "ALL" ||
+                statusSet.size > 0 ||
+                !!fromISO ||
+                !!toISO
+              }
+              onClick={() => setFilterOpen((v) => !v)}
+              buttonRef={filterBtnRef}
+            />
+          </div>
         </div>
 
-        <div className="text-[10px] font-black text-zinc-500 uppercase tracking-widest leading-none bg-zinc-800/50 px-4 py-2.5 rounded-lg border border-white/5 shadow-xl">
-          LOGS PAGE {currentPage} OF {totalPages || 1}
+        <div className="flex items-center justify-between gap-4">
+          <div className="text-[10px] font-black text-zinc-500 uppercase tracking-widest leading-none bg-zinc-800/50 px-4 py-2.5 rounded-lg border border-white/5 shadow-xl">
+            LOGS PAGE {currentPage} OF {totalPages}
+          </div>
+
+          <div className="text-[10px] font-black text-zinc-500 uppercase tracking-widest leading-none">
+            SHOWING <span className="text-emerald-500">{showCount}</span> /{" "}
+            {airdrops.length}
+          </div>
         </div>
       </div>
 
+      {/* Filter UI */}
+      {isMobile ? (
+        <FilterSheet open={filterOpen} onClose={() => setFilterOpen(false)}>
+          {filterBody}
+        </FilterSheet>
+      ) : (
+        <PopoverPortal
+          open={filterOpen}
+          anchorEl={filterBtnRef.current}
+          onClose={() => setFilterOpen(false)}
+          width={420}
+        >
+          {/* desktop header */}
+          <div className="px-5 py-4 border-b border-white/5 flex items-center justify-between">
+            <p className="text-[11px] font-black uppercase tracking-widest text-zinc-200">
+              Filters
+            </p>
+            <button
+              type="button"
+              onClick={() => setFilterOpen(false)}
+              className="h-9 w-9 rounded-2xl bg-zinc-900/60 border border-white/10 hover:border-red-500/30 grid place-items-center"
+              aria-label="Close"
+            >
+              <CloseIcon size={16} className="text-zinc-200" />
+            </button>
+          </div>
+          {filterBody}
+        </PopoverPortal>
+      )}
+      {/* Analytics (follows current filters/search) */}
+      <TableAnalytics rows={filteredSorted} days={30} />
       {/* Desktop Table */}
       <div className="hidden md:block">
         <GlassCard className="border border-zinc-200 dark:border-zinc-800/80 shadow-lg p-0 !overflow-visible">
@@ -508,7 +1352,10 @@ export default function AirdropClientTable({
               <tr className="border-b border-zinc-200 dark:border-zinc-800 text-[10px] uppercase tracking-widest text-zinc-500 dark:text-zinc-400">
                 <th className="p-5 w-[60px] text-center">
                   <UiverseCheckbox
-                    checked={selectedIds.length === currentData.length}
+                    checked={
+                      selectedIds.length === currentData.length &&
+                      currentData.length > 0
+                    }
                     onChange={toggleSelectAll}
                   />
                 </th>
@@ -538,6 +1385,11 @@ export default function AirdropClientTable({
                 {currentData.map((item) => {
                   const isFinished =
                     item.status === "LANDED" || item.status === "RUGGED";
+
+                  const showLandedValue =
+                    item.status === "LANDED" &&
+                    typeof item.landedValue === "number" &&
+                    item.landedValue > 0;
 
                   return (
                     <motion.tr
@@ -569,10 +1421,10 @@ export default function AirdropClientTable({
 
                           {item.tokenTicker && (
                             <span
-                              title={item.tokenTicker}
+                              title={fmtTicker(item.tokenTicker)}
                               className="px-2 py-0.5 text-[10px] font-black bg-zinc-700 rounded text-zinc-200 uppercase shrink-0 max-w-[90px] truncate leading-none"
                             >
-                              {item.tokenTicker}
+                              {fmtTicker(item.tokenTicker)}
                             </span>
                           )}
                         </div>
@@ -590,7 +1442,6 @@ export default function AirdropClientTable({
                             </div>
                           )}
 
-                          {/* FIX: icons ONLY if value exists */}
                           <div className="flex items-center gap-2">
                             {item.websiteLink && (
                               <a
@@ -659,11 +1510,10 @@ export default function AirdropClientTable({
                               item.status !== "IN_PROGRESS"
                             }
                             onToggle={() => {
-                              if (!isFinished) {
+                              if (!isFinished)
                                 startTransition(() =>
                                   toggleDoneStatus(item.id, item.status),
                                 );
-                              }
                             }}
                           />
                         </div>
@@ -673,7 +1523,7 @@ export default function AirdropClientTable({
                         <span
                           className={`inline-block w-24 px-2 py-1.5 text-[10px] font-black uppercase rounded-lg border text-center ${
                             item.status === "LANDED"
-                              ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/30 shadow-[0_0_10px_rgba(16,185,129,0.1)]"
+                              ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/30"
                               : item.status === "RUGGED"
                                 ? "bg-red-500/10 text-red-500 border-red-500/30"
                                 : "bg-zinc-100 dark:bg-zinc-800"
@@ -682,9 +1532,9 @@ export default function AirdropClientTable({
                           {String(item.status || "").replaceAll("_", " ")}
                         </span>
 
-                        {item.status === "LANDED" && item.landedValue && (
+                        {showLandedValue && (
                           <p className="text-[10px] font-black text-emerald-500 mt-1">
-                            +$ {item.landedValue}
+                            +$ {formatUSD(item.landedValue)}
                           </p>
                         )}
                       </td>
@@ -729,9 +1579,13 @@ export default function AirdropClientTable({
                             className={activeMenuId === item.id ? "open" : ""}
                             onClick={(e) => {
                               e.stopPropagation();
-                              setActiveMenuId((prev) =>
-                                prev === item.id ? null : item.id,
-                              );
+                              if (activeMenuId === item.id) {
+                                setActiveMenuId(null);
+                                setMenuAnchorEl(null);
+                              } else {
+                                setActiveMenuId(item.id);
+                                setMenuAnchorEl(e.currentTarget as HTMLElement);
+                              }
                             }}
                             aria-label="Menu"
                           >
@@ -772,6 +1626,10 @@ export default function AirdropClientTable({
         {currentData.map((item) => {
           const isFinished =
             item.status === "LANDED" || item.status === "RUGGED";
+          const showLandedValue =
+            item.status === "LANDED" &&
+            typeof item.landedValue === "number" &&
+            item.landedValue > 0;
 
           return (
             <GlassCard
@@ -796,7 +1654,9 @@ export default function AirdropClientTable({
                       {item.airdropName}
                     </p>
                     <p className="text-[10px] text-zinc-500 font-black uppercase truncate mt-1 leading-none">
-                      {item.tokenTicker || "NO TICKER"}
+                      {item.tokenTicker
+                        ? fmtTicker(item.tokenTicker)
+                        : "NO TICKER"}
                     </p>
                   </div>
                 </div>
@@ -814,9 +1674,9 @@ export default function AirdropClientTable({
                     {String(item.status || "").replaceAll("_", " ")}
                   </span>
 
-                  {item.status === "LANDED" && item.landedValue && (
+                  {showLandedValue && (
                     <p className="text-[10px] font-black text-emerald-500 mt-1 leading-none">
-                      +$ {item.landedValue}
+                      +$ {formatUSD(item.landedValue)}
                     </p>
                   )}
                 </div>
@@ -852,7 +1712,6 @@ export default function AirdropClientTable({
                     }}
                   />
 
-                  {/* FIX: icons ONLY if value exists */}
                   <div className="flex items-center gap-2 text-zinc-500">
                     {item.websiteLink && (
                       <a
@@ -865,7 +1724,6 @@ export default function AirdropClientTable({
                         <Globe size={14} />
                       </a>
                     )}
-
                     {item.xHandle && (
                       <a
                         href={xUrl(item.xHandle)}
@@ -877,7 +1735,6 @@ export default function AirdropClientTable({
                         <XLogo />
                       </a>
                     )}
-
                     {item.telegram && (
                       <a
                         href={tgUrl(item.telegram)}
@@ -889,7 +1746,6 @@ export default function AirdropClientTable({
                         <Send size={14} />
                       </a>
                     )}
-
                     {item.contactEmail && (
                       <a
                         href={mailUrl(item.contactEmail)}
@@ -913,6 +1769,18 @@ export default function AirdropClientTable({
                     DETAIL
                   </button>
 
+                  {!isFinished && (
+                    <button
+                      onClick={() => {
+                        setSelectedAirdropData(item);
+                        setEditModalOpen(true);
+                      }}
+                      className="px-3 py-1.5 text-[10px] font-bold text-blue-400 border border-blue-500/20 rounded-lg uppercase leading-none shadow-sm"
+                    >
+                      EDIT
+                    </button>
+                  )}
+
                   <div
                     ref={(el) => {
                       if (!menuAnchorRefs.current[item.id])
@@ -926,9 +1794,13 @@ export default function AirdropClientTable({
                       className={activeMenuId === item.id ? "open" : ""}
                       onClick={(e) => {
                         e.stopPropagation();
-                        setActiveMenuId((prev) =>
-                          prev === item.id ? null : item.id,
-                        );
+                        if (activeMenuId === item.id) {
+                          setActiveMenuId(null);
+                          setMenuAnchorEl(null);
+                        } else {
+                          setActiveMenuId(item.id);
+                          setMenuAnchorEl(e.currentTarget as HTMLElement);
+                        }
                       }}
                       aria-label="Menu"
                     >
@@ -973,11 +1845,14 @@ export default function AirdropClientTable({
         </div>
       )}
 
-      {/* -------- Menu Portal -------- */}
+      {/* Menu Portal */}
       <MenuPortal
-        open={!!activeMenuId}
-        anchorEl={resolvedAnchorEl}
-        onClose={() => setActiveMenuId(null)}
+        open={!!activeMenuId && !!menuAnchorEl}
+        anchorEl={menuAnchorEl}
+        onClose={() => {
+          setActiveMenuId(null);
+          setMenuAnchorEl(null);
+        }}
       >
         {(() => {
           if (!activeItem) return null;
@@ -996,8 +1871,8 @@ export default function AirdropClientTable({
                   }`}
                 >
                   {activeItem.status === "LANDED"
-                    ? "INTEL SECURED ✅"
-                    : "MISSION FAILED 💀"}
+                    ? "INTEL SECURED"
+                    : "MISSION FAILED"}
                 </p>
               </div>
             );
@@ -1008,6 +1883,8 @@ export default function AirdropClientTable({
               <button
                 onClick={() => {
                   setSelectedAirdropId(activeItem.id);
+                  setDollarInput("");
+                  setLandedError(null);
                   setLandingModalOpen(true);
                   setActiveMenuId(null);
                 }}
@@ -1027,7 +1904,7 @@ export default function AirdropClientTable({
         })()}
       </MenuPortal>
 
-      {/* -------- Landing Value Modal -------- */}
+      {/* Landing Value Modal */}
       <AnimatePresence>
         {landingModalOpen && (
           <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
@@ -1059,25 +1936,77 @@ export default function AirdropClientTable({
               </div>
 
               <p className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mb-4">
-                Input landed value (USD)
+                Landed value (USD) — must be &gt; 0
               </p>
 
-              <form onSubmit={handleLandedSubmit} className="space-y-5">
+              <form onSubmit={handleLandedSubmit} className="space-y-4">
                 <div className="relative">
                   <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 font-black">
                     $
                   </span>
                   <input
                     value={dollarInput}
-                    onChange={(e) =>
-                      setDollarInput(e.target.value.replace(/[^\d.]/g, ""))
-                    }
-                    placeholder="0"
+                    onChange={(e) => {
+                      // support locale: 0,5 => 0.5
+                      const normalized = e.target.value.replace(",", ".");
+
+                      // keep digits + dot only
+                      let raw = normalized.replace(/[^0-9.]/g, "");
+
+                      // keep only the first dot
+                      const firstDot = raw.indexOf(".");
+                      if (firstDot !== -1) {
+                        raw =
+                          raw.slice(0, firstDot + 1) +
+                          raw.slice(firstDot + 1).replace(/\./g, "");
+                      }
+
+                      // handle empty
+                      if (raw === "") {
+                        setDollarInput("");
+                        setLandedError(null);
+                        return;
+                      }
+
+                      // allow starting with dot: ".5" => "0.5"
+                      if (raw.startsWith(".")) raw = "0" + raw;
+
+                      const endsWithDot = raw.endsWith(".");
+                      const parts = raw.split(".");
+                      let intPart = parts[0] ?? "";
+                      const fracPart = (parts[1] ?? "").slice(0, 6); // up to 6 decimals
+
+                      // strip leading zeros for integer part (but keep single "0")
+                      intPart = intPart.replace(/^0+(?=\d)/, "");
+
+                      let safe = intPart;
+
+                      // IMPORTANT: keep trailing dot so user can type decimals
+                      if (endsWithDot) {
+                        safe = `${intPart || "0"}.`;
+                      } else if (raw.includes(".")) {
+                        safe = `${intPart || "0"}.${fracPart}`;
+                      } else {
+                        safe = intPart;
+                      }
+
+                      setDollarInput(safe);
+                      setLandedError(null);
+                    }}
+                    type="text"
+                    placeholder="e.g. 25"
+                    inputMode="decimal"
                     className="w-full h-12 pl-8 pr-4 rounded-2xl bg-zinc-950 border border-white/10 text-zinc-100 font-black tracking-widest outline-none focus:border-emerald-500/40"
                   />
                 </div>
 
-                <div className="flex gap-3">
+                {landedError && (
+                  <p className="text-[10px] font-black uppercase tracking-widest text-red-400">
+                    {landedError}
+                  </p>
+                )}
+
+                <div className="flex gap-3 pt-2">
                   <button
                     type="button"
                     onClick={() => setLandingModalOpen(false)}
@@ -1087,8 +2016,8 @@ export default function AirdropClientTable({
                   </button>
                   <button
                     type="submit"
-                    disabled={isPending}
-                    className="flex-1 px-4 py-3 text-xs font-black text-zinc-950 bg-emerald-500 rounded-xl hover:bg-emerald-400 shadow-lg uppercase tracking-widest disabled:opacity-50"
+                    disabled={isPending || !landedValid}
+                    className="flex-1 px-4 py-3 text-xs font-black text-zinc-950 bg-emerald-500 rounded-xl hover:bg-emerald-400 shadow-lg uppercase tracking-widest disabled:opacity-40"
                   >
                     Confirm
                   </button>
@@ -1099,7 +2028,7 @@ export default function AirdropClientTable({
         )}
       </AnimatePresence>
 
-      {/* -------- Delete Confirm Modal -------- */}
+      {/* Delete Confirm Modal */}
       <AnimatePresence>
         {deleteModalOpen && (
           <div className="fixed inset-0 z-[250] flex items-center justify-center p-4">
@@ -1144,7 +2073,7 @@ export default function AirdropClientTable({
         )}
       </AnimatePresence>
 
-      {/* -------- Detail / Edit Modals -------- */}
+      {/* Detail / Edit Modals */}
       <DetailModal
         isOpen={viewModalOpen}
         onClose={() => setViewModalOpen(false)}
@@ -1157,7 +2086,7 @@ export default function AirdropClientTable({
         userId={userId}
       />
 
-      {/* -------- Overlays -------- */}
+      {/* Overlays */}
       <AnimatePresence>
         {showRuggedOverlay && (
           <motion.div
