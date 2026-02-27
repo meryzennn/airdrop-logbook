@@ -1,14 +1,11 @@
-import { signOut } from "@/auth";
+"use client";
+
 import { LogOut } from "lucide-react";
+import { signOutAction } from "./signout-action";
 
 export function SignOutButton() {
   return (
-    <form
-      action={async () => {
-        "use server";
-        await signOut();
-      }}
-    >
+    <form action={signOutAction}>
       {/* Uiverse.io Inspired: Expanding Circular Logout Button 
         Starts as a circle, expands into a pill shape on hover.
       */}

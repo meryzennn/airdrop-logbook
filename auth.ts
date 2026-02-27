@@ -1,10 +1,14 @@
+// auth.ts
 import NextAuth from "next-auth";
-import Google from "next-auth/providers/google";
 import { PrismaAdapter } from "@auth/prisma-adapter";
-import { prisma } from "@/lib/prisma"; // Pakai singleton Prisma yang udah kita buat
+import { PrismaClient } from "@prisma/client";
+import { authConfig } from "@/auth.config";
+
+const prisma = new PrismaClient();
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  ...authConfig,
   adapter: PrismaAdapter(prisma),
-  providers: [Google],
-  // Blok session: { strategy: "jwt" } kita hapus aja biar otomatis pakai Database Session
+
+  session: { strategy: "jwt" },
 });

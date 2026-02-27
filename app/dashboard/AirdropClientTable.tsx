@@ -4,6 +4,7 @@ import React, {
   FormEvent,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -16,7 +17,6 @@ import styled from "styled-components";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { NeonToggle } from "@/components/ui/NeonToggle";
 import { UiverseCheckbox } from "@/components/ui/UiverseCheckbox";
-
 import AddAirdropModal from "./AddAirdropModal";
 import { DetailModal } from "./DetailModal";
 import { EditModal } from "./EditModal";
@@ -602,7 +602,7 @@ function PopoverPortal({
   children,
 }: PopoverProps) {
   const [mounted, setMounted] = useState(false);
-  const [pos, setPos] = useState({ top: 0, left: 0 });
+  const [pos, setPos] = useState({ top: 0, left: 0, w: width });
 
   const updatePos = useCallback(() => {
     if (!anchorEl) return;
@@ -615,19 +615,25 @@ function PopoverPortal({
     left = Math.max(8, Math.min(left, window.innerWidth - w - 8));
 
     let top = rect.bottom + gap;
+
     const maxH = 560;
     if (top + maxH > window.innerHeight) {
       top = Math.max(8, rect.top - gap - maxH);
     }
 
-    setPos({ top, left });
+    setPos({ top, left, w });
   }, [anchorEl, width]);
 
   useEffect(() => setMounted(true), []);
 
-  useEffect(() => {
+  // ✅ hitung posisi sebelum paint biar gak “loncat”
+  useLayoutEffect(() => {
     if (!open) return;
     updatePos();
+  }, [open, updatePos]);
+
+  useEffect(() => {
+    if (!open) return;
 
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     const onResize = () => updatePos();
@@ -644,30 +650,34 @@ function PopoverPortal({
     };
   }, [open, onClose, updatePos]);
 
-  if (!mounted || !open) return null;
+  if (!mounted) return null;
 
   return createPortal(
     <AnimatePresence>
-      <motion.div
-        key="overlay"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        onMouseDown={onClose}
-        className="fixed inset-0 z-[9996] bg-transparent"
-      />
-      <motion.div
-        key="popover"
-        initial={{ opacity: 0, scale: 0.98, y: 8 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.98, y: 8 }}
-        transition={{ duration: 0.14 }}
-        style={{ top: pos.top, left: pos.left, width }}
-        onMouseDown={(e) => e.stopPropagation()}
-        className="fixed z-[9997] rounded-3xl bg-zinc-950 border border-white/10 shadow-2xl overflow-hidden max-h-[80vh] overflow-y-auto"
-      >
-        {children}
-      </motion.div>
+      {open && (
+        <>
+          <motion.div
+            key="overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onMouseDown={onClose}
+            className="fixed inset-0 z-[9996] bg-transparent"
+          />
+          <motion.div
+            key="popover"
+            initial={{ opacity: 0, scale: 0.98, y: 8 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.98, y: 8 }}
+            transition={{ duration: 0.14 }}
+            style={{ top: pos.top, left: pos.left, width: pos.w }}
+            onMouseDown={(e) => e.stopPropagation()}
+            className="fixed z-[9997] rounded-3xl bg-zinc-950 border border-white/10 shadow-2xl overflow-hidden max-h-[80vh] overflow-y-auto"
+          >
+            {children}
+          </motion.div>
+        </>
+      )}
     </AnimatePresence>,
     document.body,
   );
@@ -685,48 +695,52 @@ function FilterSheet({
 }) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
-  if (!mounted || !open) return null;
+  if (!mounted) return null;
 
   return createPortal(
     <AnimatePresence>
-      <motion.div
-        key="sheet-overlay"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        onClick={onClose}
-        className="fixed inset-0 z-[9996] bg-zinc-950/70 backdrop-blur-sm"
-      />
-      <motion.div
-        key="sheet"
-        initial={{ y: 40, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        exit={{ y: 40, opacity: 0 }}
-        transition={{ type: "spring", damping: 26, stiffness: 320 }}
-        onClick={(e) => e.stopPropagation()}
-        className="fixed left-0 right-0 bottom-0 z-[9997] rounded-t-[28px] border border-white/10 bg-zinc-950 shadow-2xl max-h-[85vh] overflow-y-auto"
-      >
-        <div className="sticky top-0 z-10 bg-zinc-950/90 backdrop-blur border-b border-white/5 px-5 py-4 flex items-center justify-between">
-          <p className="text-[11px] font-black uppercase tracking-widest text-zinc-200">
-            Filters
-          </p>
-          <button
-            type="button"
+      {open && (
+        <>
+          <motion.div
+            key="sheet-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
             onClick={onClose}
-            className="h-9 w-9 rounded-2xl bg-zinc-900/60 border border-white/10 hover:border-red-500/30 grid place-items-center"
-            aria-label="Close"
+            className="fixed inset-0 z-[9996] bg-zinc-950/70 backdrop-blur-sm"
+          />
+          <motion.div
+            key="sheet"
+            initial={{ y: 40, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 40, opacity: 0 }}
+            transition={{ type: "spring", damping: 26, stiffness: 320 }}
+            onClick={(e) => e.stopPropagation()}
+            className="fixed left-0 right-0 bottom-0 z-[9997] rounded-t-[28px] border border-white/10 bg-zinc-950 shadow-2xl max-h-[85vh] overflow-y-auto"
           >
-            <CloseIcon size={16} className="text-zinc-200" />
-          </button>
-        </div>
-        {children}
-      </motion.div>
+            <div className="sticky top-0 z-10 bg-zinc-950/90 backdrop-blur border-b border-white/5 px-5 py-4 flex items-center justify-between">
+              <p className="text-[11px] font-black uppercase tracking-widest text-zinc-200">
+                Filters
+              </p>
+              <button
+                type="button"
+                onClick={onClose}
+                className="h-9 w-9 rounded-2xl bg-zinc-900/60 border border-white/10 hover:border-red-500/30 grid place-items-center"
+                aria-label="Close"
+              >
+                <CloseIcon size={16} className="text-zinc-200" />
+              </button>
+            </div>
+            {children}
+          </motion.div>
+        </>
+      )}
     </AnimatePresence>,
     document.body,
   );
 }
 
-/* ---------------- Menu Portal (uses PopoverPortal width=192) ---------------- */
+/* ---------------- Menu Portal (small height) ---------------- */
 function MenuPortal({
   open,
   anchorEl,
@@ -745,8 +759,8 @@ function MenuPortal({
     if (!anchorEl) return;
 
     const rect = anchorEl.getBoundingClientRect();
-    const menuW = 192; // w-48
-    const menuH = 140; // ✅ tinggi menu kecil, bukan 560
+    const menuW = 192;
+    const menuH = 140;
     const gap = 10;
 
     let left = rect.right - menuW;
@@ -763,10 +777,13 @@ function MenuPortal({
 
   useEffect(() => setMounted(true), []);
 
+  useLayoutEffect(() => {
+    if (!open || !anchorEl) return;
+    updatePos();
+  }, [open, anchorEl, updatePos]);
+
   useEffect(() => {
     if (!open || !anchorEl) return;
-
-    updatePos();
 
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     const onResize = () => updatePos();
@@ -783,31 +800,34 @@ function MenuPortal({
     };
   }, [open, anchorEl, onClose, updatePos]);
 
-  if (!mounted || !open || !anchorEl) return null;
+  if (!mounted) return null;
 
   return createPortal(
     <AnimatePresence>
-      <motion.div
-        key="menu-overlay"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        onMouseDown={onClose}
-        className="fixed inset-0 z-[9998] bg-transparent"
-      />
-
-      <motion.div
-        key="menu"
-        initial={{ opacity: 0, scale: 0.96, y: 6 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.96, y: 6 }}
-        transition={{ duration: 0.14 }}
-        style={{ top: pos.top, left: pos.left }}
-        onMouseDown={(e) => e.stopPropagation()}
-        className="fixed z-[9999] w-48 bg-zinc-950 border border-zinc-800 rounded-xl shadow-2xl overflow-hidden pointer-events-auto"
-      >
-        {children}
-      </motion.div>
+      {open && anchorEl && (
+        <>
+          <motion.div
+            key="menu-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onMouseDown={onClose}
+            className="fixed inset-0 z-[9998] bg-transparent"
+          />
+          <motion.div
+            key="menu"
+            initial={{ opacity: 0, scale: 0.96, y: 6 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: 6 }}
+            transition={{ duration: 0.14 }}
+            style={{ top: pos.top, left: pos.left }}
+            onMouseDown={(e) => e.stopPropagation()}
+            className="fixed z-[9999] w-48 bg-zinc-950 border border-zinc-800 rounded-xl shadow-2xl overflow-hidden pointer-events-auto"
+          >
+            {children}
+          </motion.div>
+        </>
+      )}
     </AnimatePresence>,
     document.body,
   );
@@ -834,17 +854,20 @@ export default function AirdropClientTable({
 }) {
   const [isPending, startTransition] = useTransition();
   const [menuAnchorEl, setMenuAnchorEl] = useState<HTMLElement | null>(null);
+
   // Search: draft -> click icon / enter -> commit
   const [searchDraft, setSearchDraft] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const commitSearch = useCallback(() => {
     setSearchQuery((searchDraft || "").trim());
   }, [searchDraft]);
+
   const fmtTicker = (t?: string) => {
     const v = clean(t);
     if (!v) return "";
     return v.startsWith("$") ? v : `$${v}`;
   };
+
   // Filter UI
   const [filterOpen, setFilterOpen] = useState(false);
   const filterBtnRef = useRef<HTMLButtonElement | null>(null);
@@ -885,15 +908,23 @@ export default function AirdropClientTable({
     };
   }, []);
 
-  // lock scroll while filter open (mobile bug fix)
+  // ✅ lock scroll hanya di MOBILE + kompensasi scrollbar (biar desktop gak geser)
   useEffect(() => {
-    if (!filterOpen) return;
-    const prev = document.body.style.overflow;
+    if (!filterOpen || !isMobile) return;
+
+    const prevOverflow = document.body.style.overflow;
+    const prevPad = document.body.style.paddingRight;
+
+    const scrollbarW = window.innerWidth - document.documentElement.clientWidth;
+
     document.body.style.overflow = "hidden";
+    document.body.style.paddingRight = `${scrollbarW}px`;
+
     return () => {
-      document.body.style.overflow = prev || "unset";
+      document.body.style.overflow = prevOverflow || "";
+      document.body.style.paddingRight = prevPad || "";
     };
-  }, [filterOpen]);
+  }, [filterOpen, isMobile]);
 
   // pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -933,26 +964,6 @@ export default function AirdropClientTable({
     if (!activeMenuId) return null;
     return airdrops.find((x) => x.id === activeMenuId) ?? null;
   }, [activeMenuId, airdrops]);
-
-  const resolvedMenuAnchorEl = useMemo(() => {
-    if (!activeMenuId) return null;
-    const refs = menuAnchorRefs.current[activeMenuId];
-    if (!refs) return null;
-
-    const primary = isDesktop ? refs.desktop : refs.mobile;
-    const secondary = isDesktop ? refs.mobile : refs.desktop;
-
-    const good = (el?: HTMLElement | null) => {
-      if (!el) return false;
-      const r = el.getBoundingClientRect();
-      return !(r.left === 0 && r.top === 0 && r.width === 0 && r.height === 0);
-    };
-
-    if (primary && good(primary)) return primary;
-    if (secondary && good(secondary)) return secondary;
-
-    return (primary ?? secondary ?? null) as HTMLElement | null;
-  }, [activeMenuId, isDesktop]);
 
   // chain options derived dynamically
   const chainOptions = useMemo(() => {
@@ -1325,7 +1336,6 @@ export default function AirdropClientTable({
           onClose={() => setFilterOpen(false)}
           width={420}
         >
-          {/* desktop header */}
           <div className="px-5 py-4 border-b border-white/5 flex items-center justify-between">
             <p className="text-[11px] font-black uppercase tracking-widest text-zinc-200">
               Filters
@@ -1342,8 +1352,10 @@ export default function AirdropClientTable({
           {filterBody}
         </PopoverPortal>
       )}
-      {/* Analytics (follows current filters/search) */}
+
+      {/* Analytics */}
       <TableAnalytics rows={filteredSorted} days={30} />
+
       {/* Desktop Table */}
       <div className="hidden md:block">
         <GlassCard className="border border-zinc-200 dark:border-zinc-800/80 shadow-lg p-0 !overflow-visible">
@@ -1380,8 +1392,16 @@ export default function AirdropClientTable({
               </tr>
             </thead>
 
-            <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800/50">
-              <AnimatePresence mode="popLayout">
+            {/* ✅ animasi per-page (bukan per-row layout) */}
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.tbody
+                key={`page-${currentPage}`}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.15 }}
+                className="divide-y divide-zinc-200 dark:divide-zinc-800/50"
+              >
                 {currentData.map((item) => {
                   const isFinished =
                     item.status === "LANDED" || item.status === "RUGGED";
@@ -1392,12 +1412,8 @@ export default function AirdropClientTable({
                     item.landedValue > 0;
 
                   return (
-                    <motion.tr
+                    <tr
                       key={item.id}
-                      layout
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0, x: -20 }}
                       className="transition-colors hover:bg-zinc-100/50 dark:hover:bg-zinc-800/30 group"
                     >
                       <td className="p-5 w-[60px] text-center">
@@ -1599,11 +1615,11 @@ export default function AirdropClientTable({
                           </HamburgerButton>
                         </div>
                       </td>
-                    </motion.tr>
+                    </tr>
                   );
                 })}
-              </AnimatePresence>
-            </tbody>
+              </motion.tbody>
+            </AnimatePresence>
           </table>
         </GlassCard>
       </div>
@@ -1623,201 +1639,218 @@ export default function AirdropClientTable({
           </span>
         </div>
 
-        {currentData.map((item) => {
-          const isFinished =
-            item.status === "LANDED" || item.status === "RUGGED";
-          const showLandedValue =
-            item.status === "LANDED" &&
-            typeof item.landedValue === "number" &&
-            item.landedValue > 0;
+        {/* ✅ animasi per-page */}
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key={`m-page-${currentPage}`}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.15 }}
+            className="space-y-4"
+          >
+            {currentData.map((item) => {
+              const isFinished =
+                item.status === "LANDED" || item.status === "RUGGED";
+              const showLandedValue =
+                item.status === "LANDED" &&
+                typeof item.landedValue === "number" &&
+                item.landedValue > 0;
 
-          return (
-            <GlassCard
-              key={item.id}
-              className="p-5 flex flex-col gap-4 border border-zinc-800 shadow-md mx-2"
-            >
-              <div className="flex items-start justify-between gap-3 min-w-0">
-                <div className="flex items-center gap-3 min-w-0">
-                  <UiverseCheckbox
-                    checked={selectedIds.includes(item.id)}
-                    onChange={() =>
-                      setSelectedIds((prev) =>
-                        prev.includes(item.id)
-                          ? prev.filter((i) => i !== item.id)
-                          : [...prev, item.id],
-                      )
-                    }
-                  />
-
-                  <div className="flex flex-col min-w-0">
-                    <p className="font-[var(--font-display)] font-black text-white text-[13px] truncate uppercase tracking-tight leading-none">
-                      {item.airdropName}
-                    </p>
-                    <p className="text-[10px] text-zinc-500 font-black uppercase truncate mt-1 leading-none">
-                      {item.tokenTicker
-                        ? fmtTicker(item.tokenTicker)
-                        : "NO TICKER"}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex flex-col items-end">
-                  <span
-                    className={`px-2 py-1 text-[9px] font-black tracking-wider uppercase rounded border ${
-                      item.status === "LANDED"
-                        ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/30"
-                        : item.status === "RUGGED"
-                          ? "bg-red-500/10 text-red-500 border-red-500/30"
-                          : "bg-zinc-800 border-zinc-700"
-                    } leading-none`}
-                  >
-                    {String(item.status || "").replaceAll("_", " ")}
-                  </span>
-
-                  {showLandedValue && (
-                    <p className="text-[10px] font-black text-emerald-500 mt-1 leading-none">
-                      +$ {formatUSD(item.landedValue)}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between bg-zinc-950 p-3 rounded-xl border border-white/5 min-w-0">
-                <div className="flex items-center gap-2 text-[10px] font-black text-zinc-400 uppercase leading-none min-w-0">
-                  <BarChart3 size={12} className="text-emerald-500" />
-                  <span className="truncate max-w-[180px]">{item.chain}</span>
-                </div>
-
-                {item.wallet && (
-                  <div
-                    title={item.wallet}
-                    className="text-[10px] font-mono text-zinc-500 leading-none truncate max-w-[120px]"
-                  >
-                    {item.wallet.slice(0, 6)}...{item.wallet.slice(-4)}
-                  </div>
-                )}
-              </div>
-
-              <div className="flex justify-between items-center gap-2 mt-1">
-                <div className="flex items-center gap-3">
-                  <NeonToggle
-                    isOn={
-                      item.status !== "PLANNED" && item.status !== "IN_PROGRESS"
-                    }
-                    onToggle={() => {
-                      if (!isFinished)
-                        startTransition(() =>
-                          toggleDoneStatus(item.id, item.status),
-                        );
-                    }}
-                  />
-
-                  <div className="flex items-center gap-2 text-zinc-500">
-                    {item.websiteLink && (
-                      <a
-                        href={item.websiteLink}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="hover:text-pink-400 transition-colors"
-                        aria-label="Website"
-                      >
-                        <Globe size={14} />
-                      </a>
-                    )}
-                    {item.xHandle && (
-                      <a
-                        href={xUrl(item.xHandle)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="hover:text-zinc-50 transition-colors"
-                        aria-label="X"
-                      >
-                        <XLogo />
-                      </a>
-                    )}
-                    {item.telegram && (
-                      <a
-                        href={tgUrl(item.telegram)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="hover:text-sky-400 transition-colors"
-                        aria-label="Telegram"
-                      >
-                        <Send size={14} />
-                      </a>
-                    )}
-                    {item.contactEmail && (
-                      <a
-                        href={mailUrl(item.contactEmail)}
-                        className="hover:text-amber-500 transition-colors"
-                        aria-label="Email"
-                      >
-                        <Mail size={14} />
-                      </a>
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex gap-2 items-center">
-                  <button
-                    onClick={() => {
-                      setSelectedAirdropData(item);
-                      setViewModalOpen(true);
-                    }}
-                    className="px-3 py-1.5 text-[10px] font-bold text-emerald-500 border border-emerald-500/20 rounded-lg uppercase leading-none shadow-sm"
-                  >
-                    DETAIL
-                  </button>
-
-                  {!isFinished && (
-                    <button
-                      onClick={() => {
-                        setSelectedAirdropData(item);
-                        setEditModalOpen(true);
-                      }}
-                      className="px-3 py-1.5 text-[10px] font-bold text-blue-400 border border-blue-500/20 rounded-lg uppercase leading-none shadow-sm"
-                    >
-                      EDIT
-                    </button>
-                  )}
-
-                  <div
-                    ref={(el) => {
-                      if (!menuAnchorRefs.current[item.id])
-                        menuAnchorRefs.current[item.id] = {};
-                      menuAnchorRefs.current[item.id].mobile = el;
-                    }}
-                    className="inline-flex"
-                  >
-                    <HamburgerButton
-                      type="button"
-                      className={activeMenuId === item.id ? "open" : ""}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (activeMenuId === item.id) {
-                          setActiveMenuId(null);
-                          setMenuAnchorEl(null);
-                        } else {
-                          setActiveMenuId(item.id);
-                          setMenuAnchorEl(e.currentTarget as HTMLElement);
+              return (
+                <GlassCard
+                  key={item.id}
+                  className="p-5 flex flex-col gap-4 border border-zinc-800 shadow-md mx-2"
+                >
+                  <div className="flex items-start justify-between gap-3 min-w-0">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <UiverseCheckbox
+                        checked={selectedIds.includes(item.id)}
+                        onChange={() =>
+                          setSelectedIds((prev) =>
+                            prev.includes(item.id)
+                              ? prev.filter((i) => i !== item.id)
+                              : [...prev, item.id],
+                          )
                         }
-                      }}
-                      aria-label="Menu"
-                    >
-                      <svg viewBox="0 0 32 32">
-                        <path
-                          className="line line-top-bottom"
-                          d="M27 10 13 10C10.8 10 9 8.2 9 6 9 3.5 10.8 2 13 2 15.2 2 17 3.8 17 6L17 26C17 28.2 18.8 30 21 30 23.2 30 25 28.2 25 26 25 23.8 23.2 22 21 22L7 22"
-                        />
-                        <path className="line" d="M7 16 27 16" />
-                      </svg>
-                    </HamburgerButton>
+                      />
+
+                      <div className="flex flex-col min-w-0">
+                        <p className="font-[var(--font-display)] font-black text-white text-[13px] truncate uppercase tracking-tight leading-none">
+                          {item.airdropName}
+                        </p>
+                        <p className="text-[10px] text-zinc-500 font-black uppercase truncate mt-1 leading-none">
+                          {item.tokenTicker
+                            ? fmtTicker(item.tokenTicker)
+                            : "NO TICKER"}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col items-end">
+                      <span
+                        className={`px-2 py-1 text-[9px] font-black tracking-wider uppercase rounded border ${
+                          item.status === "LANDED"
+                            ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/30"
+                            : item.status === "RUGGED"
+                              ? "bg-red-500/10 text-red-500 border-red-500/30"
+                              : "bg-zinc-800 border-zinc-700"
+                        } leading-none`}
+                      >
+                        {String(item.status || "").replaceAll("_", " ")}
+                      </span>
+
+                      {showLandedValue && (
+                        <p className="text-[10px] font-black text-emerald-500 mt-1 leading-none">
+                          +$ {formatUSD(item.landedValue)}
+                        </p>
+                      )}
+                    </div>
                   </div>
-                </div>
-              </div>
-            </GlassCard>
-          );
-        })}
+
+                  <div className="flex items-center justify-between bg-zinc-950 p-3 rounded-xl border border-white/5 min-w-0">
+                    <div className="flex items-center gap-2 text-[10px] font-black text-zinc-400 uppercase leading-none min-w-0">
+                      <BarChart3 size={12} className="text-emerald-500" />
+                      <span className="truncate max-w-[180px]">
+                        {item.chain}
+                      </span>
+                    </div>
+
+                    {item.wallet && (
+                      <div
+                        title={item.wallet}
+                        className="text-[10px] font-mono text-zinc-500 leading-none truncate max-w-[120px]"
+                      >
+                        {item.wallet.slice(0, 6)}...{item.wallet.slice(-4)}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex justify-between items-center gap-2 mt-1">
+                    <div className="flex items-center gap-3">
+                      <NeonToggle
+                        isOn={
+                          item.status !== "PLANNED" &&
+                          item.status !== "IN_PROGRESS"
+                        }
+                        onToggle={() => {
+                          if (!isFinished)
+                            startTransition(() =>
+                              toggleDoneStatus(item.id, item.status),
+                            );
+                        }}
+                      />
+
+                      <div className="flex items-center gap-2 text-zinc-500">
+                        {item.websiteLink && (
+                          <a
+                            href={item.websiteLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="hover:text-pink-400 transition-colors"
+                            aria-label="Website"
+                          >
+                            <Globe size={14} />
+                          </a>
+                        )}
+                        {item.xHandle && (
+                          <a
+                            href={xUrl(item.xHandle)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="hover:text-zinc-50 transition-colors"
+                            aria-label="X"
+                          >
+                            <XLogo />
+                          </a>
+                        )}
+                        {item.telegram && (
+                          <a
+                            href={tgUrl(item.telegram)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="hover:text-sky-400 transition-colors"
+                            aria-label="Telegram"
+                          >
+                            <Send size={14} />
+                          </a>
+                        )}
+                        {item.contactEmail && (
+                          <a
+                            href={mailUrl(item.contactEmail)}
+                            className="hover:text-amber-500 transition-colors"
+                            aria-label="Email"
+                          >
+                            <Mail size={14} />
+                          </a>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2 items-center">
+                      <button
+                        onClick={() => {
+                          setSelectedAirdropData(item);
+                          setViewModalOpen(true);
+                        }}
+                        className="px-3 py-1.5 text-[10px] font-bold text-emerald-500 border border-emerald-500/20 rounded-lg uppercase leading-none shadow-sm"
+                      >
+                        DETAIL
+                      </button>
+
+                      {!isFinished && (
+                        <button
+                          onClick={() => {
+                            setSelectedAirdropData(item);
+                            setEditModalOpen(true);
+                          }}
+                          className="px-3 py-1.5 text-[10px] font-bold text-blue-400 border border-blue-500/20 rounded-lg uppercase leading-none shadow-sm"
+                        >
+                          EDIT
+                        </button>
+                      )}
+
+                      <div
+                        ref={(el) => {
+                          if (!menuAnchorRefs.current[item.id])
+                            menuAnchorRefs.current[item.id] = {};
+                          menuAnchorRefs.current[item.id].mobile = el;
+                        }}
+                        className="inline-flex"
+                      >
+                        <HamburgerButton
+                          type="button"
+                          className={activeMenuId === item.id ? "open" : ""}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (activeMenuId === item.id) {
+                              setActiveMenuId(null);
+                              setMenuAnchorEl(null);
+                            } else {
+                              setActiveMenuId(item.id);
+                              setMenuAnchorEl(
+                                e.currentTarget as unknown as HTMLElement,
+                              );
+                            }
+                          }}
+                          aria-label="Menu"
+                        >
+                          <svg viewBox="0 0 32 32">
+                            <path
+                              className="line line-top-bottom"
+                              d="M27 10 13 10C10.8 10 9 8.2 9 6 9 3.5 10.8 2 13 2 15.2 2 17 3.8 17 6L17 26C17 28.2 18.8 30 21 30 23.2 30 25 28.2 25 26 25 23.8 23.2 22 21 22L7 22"
+                            />
+                            <path className="line" d="M7 16 27 16" />
+                          </svg>
+                        </HamburgerButton>
+                      </div>
+                    </div>
+                  </div>
+                </GlassCard>
+              );
+            })}
+          </motion.div>
+        </AnimatePresence>
       </div>
 
       {/* Pager */}
@@ -1947,13 +1980,9 @@ export default function AirdropClientTable({
                   <input
                     value={dollarInput}
                     onChange={(e) => {
-                      // support locale: 0,5 => 0.5
                       const normalized = e.target.value.replace(",", ".");
-
-                      // keep digits + dot only
                       let raw = normalized.replace(/[^0-9.]/g, "");
 
-                      // keep only the first dot
                       const firstDot = raw.indexOf(".");
                       if (firstDot !== -1) {
                         raw =
@@ -1961,27 +1990,23 @@ export default function AirdropClientTable({
                           raw.slice(firstDot + 1).replace(/\./g, "");
                       }
 
-                      // handle empty
                       if (raw === "") {
                         setDollarInput("");
                         setLandedError(null);
                         return;
                       }
 
-                      // allow starting with dot: ".5" => "0.5"
                       if (raw.startsWith(".")) raw = "0" + raw;
 
                       const endsWithDot = raw.endsWith(".");
                       const parts = raw.split(".");
                       let intPart = parts[0] ?? "";
-                      const fracPart = (parts[1] ?? "").slice(0, 6); // up to 6 decimals
+                      const fracPart = (parts[1] ?? "").slice(0, 6);
 
-                      // strip leading zeros for integer part (but keep single "0")
                       intPart = intPart.replace(/^0+(?=\d)/, "");
 
                       let safe = intPart;
 
-                      // IMPORTANT: keep trailing dot so user can type decimals
                       if (endsWithDot) {
                         safe = `${intPart || "0"}.`;
                       } else if (raw.includes(".")) {

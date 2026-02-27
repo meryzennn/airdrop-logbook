@@ -5,16 +5,24 @@ import { revalidatePath } from "next/cache";
 import { Status } from "@prisma/client";
 
 // ✅ GANTI PATH ini kalau auth kamu beda
-import { auth } from "@/auth";
+import { auth, signIn } from "@/auth";
 
 /* ---------------- Auth helper ---------------- */
 async function requireUserId(passedUserId?: string) {
   if (passedUserId) return passedUserId;
 
   const session = await auth();
-  const userId = session?.user?.id as string | undefined;
-  if (!userId) throw new Error("Unauthorized");
-  return userId;
+  const email = session?.user?.email;
+
+  if (!email) throw new Error("Unauthorized");
+
+  const user = await prisma.user.findUnique({
+    where: { email },
+    select: { id: true },
+  });
+
+  if (!user?.id) throw new Error("Unauthorized");
+  return user.id;
 }
 
 /* ---------------- Date helper (user input) ----------------
@@ -207,4 +215,8 @@ export async function deleteAirdrops(ids: string[]) {
 
   revalidatePath("/dashboard");
   revalidatePath("/dashboard/analytics");
+}
+// ✅ Auth action for Landing button
+export async function signInWithGoogle() {
+  await signIn("google", { redirectTo: "/dashboard" });
 }

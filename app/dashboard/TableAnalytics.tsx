@@ -63,16 +63,34 @@ export default function TableAnalytics({
 }) {
   const [open, setOpen] = useState(true);
 
-  // Chart mount control (prevent width/height -1 warning)
-  const [chartsReady, setChartsReady] = useState(true);
-
-  // Panel overflow control (tooltip needs overflow visible after open)
-  const [panelClip, setPanelClip] = useState(false);
+  // IMPORTANT: start false to avoid Recharts reading -1,-1 at first paint
+  const [chartsReady, setChartsReady] = useState(false);
 
   const [activePieIndex, setActivePieIndex] = useState<number | null>(null);
 
-  const firstRun = useRef(true);
   const timerRef = useRef<number | null>(null);
+
+  // mount: show charts next frame
+  useEffect(() => {
+    const raf = requestAnimationFrame(() => setChartsReady(true));
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
+  // responsive detection
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    const apply = () => setIsMobile(mq.matches);
+    apply();
+
+    if (mq.addEventListener) mq.addEventListener("change", apply);
+    else mq.addListener(apply);
+
+    return () => {
+      if (mq.removeEventListener) mq.removeEventListener("change", apply);
+      else mq.removeListener(apply);
+    };
+  }, []);
 
   const data = useMemo(() => {
     const total = rows.length;
@@ -163,32 +181,19 @@ export default function TableAnalytics({
     };
   }, [rows, days, topChains]);
 
-  // Mount charts only after open animation settles
+  // toggle open: mount charts after collapse animation + 1 frame
   useEffect(() => {
-    if (firstRun.current) {
-      firstRun.current = false;
-      // initial open = true, charts can mount
-      setChartsReady(true);
-      setPanelClip(false);
+    if (timerRef.current) window.clearTimeout(timerRef.current);
+
+    if (!open) {
+      setChartsReady(false);
       return;
     }
 
-    if (timerRef.current) window.clearTimeout(timerRef.current);
-
-    if (open) {
-      // opening: clip content while expanding; show skeleton; mount charts after animation
-      setPanelClip(true);
-      setChartsReady(false);
-
-      timerRef.current = window.setTimeout(() => {
-        setChartsReady(true);
-        setPanelClip(false); // allow tooltip to escape
-      }, COLLAPSE_MS + 40);
-    } else {
-      // closing: unmount charts immediately; keep clipping while collapsing
-      setPanelClip(true);
-      setChartsReady(false);
-    }
+    setChartsReady(false);
+    timerRef.current = window.setTimeout(() => {
+      requestAnimationFrame(() => setChartsReady(true));
+    }, COLLAPSE_MS + 60);
 
     return () => {
       if (timerRef.current) window.clearTimeout(timerRef.current);
@@ -197,9 +202,28 @@ export default function TableAnalytics({
 
   if (!rows?.length) return null;
 
+  // responsive sizing
+  const pieOuter = isMobile ? 70 : 82;
+  const pieInner = isMobile ? 42 : 50;
+
+  const PIE_H = isMobile ? "h-[200px]" : "h-56";
+  const LINE_H = isMobile ? "h-[200px]" : "h-56";
+  const BAR_H = isMobile ? "h-[240px]" : "h-60";
+
+  // extra safety: inline height (prevents 0px edge cases)
+  const PIE_H_PX = isMobile ? 200 : 224;
+  const LINE_H_PX = isMobile ? 200 : 224;
+  const BAR_H_PX = isMobile ? 240 : 240;
+
+  const axisTick = {
+    fill: "rgba(161,161,170,0.9)",
+    fontSize: isMobile ? 10 : 11,
+    fontWeight: 900,
+  } as const;
+
   return (
     <div className="px-2 mt-4 md:mt-0">
-      <GlassCard className="mx-2 md:mx-0 p-0 !overflow-visible border border-white/10 shadow-2xl">
+      <GlassCard className="mx-2 md:mx-0 p-0 overflow-hidden border border-white/10 shadow-2xl">
         {/* Header */}
         <div className="px-5 py-4 bg-zinc-950/60 border-b border-white/5 flex items-center justify-between">
           <div className="flex items-center gap-3 min-w-0">
@@ -239,11 +263,11 @@ export default function TableAnalytics({
           initial={false}
           animate={
             open
-              ? { maxHeight: 1200, opacity: 1, y: 0 }
+              ? { maxHeight: 1400, opacity: 1, y: 0 }
               : { maxHeight: 0, opacity: 0, y: 8 }
           }
           transition={{ duration: COLLAPSE_MS / 1000, ease: "easeInOut" }}
-          style={{ overflow: panelClip ? "hidden" : "visible" }}
+          style={{ overflow: "hidden" }}
           className="bg-zinc-950/40"
         >
           <div className="p-5 space-y-6">
@@ -258,12 +282,7 @@ export default function TableAnalytics({
                   className="space-y-6"
                 >
                   {/* Stat cards */}
-                  <motion.div
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.18, delay: 0.02 }}
-                    className="grid grid-cols-2 md:grid-cols-5 gap-3"
-                  >
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3 min-w-0">
                     <Stat label="Total" value={data.total} />
                     <Stat label="Done Rate" value={`${data.doneRate}%`} />
                     <Stat
@@ -287,29 +306,35 @@ export default function TableAnalytics({
                         </span>
                       }
                     />
-                  </motion.div>
+                  </div>
 
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+                  {/* Charts grid */}
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 min-w-0">
                     {/* Pie */}
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.98, y: 10 }}
-                      animate={{ opacity: 1, scale: 1, y: 0 }}
-                      transition={{ duration: 0.2, delay: 0.04 }}
-                      className="rounded-3xl bg-zinc-900/50 border border-white/10 p-5 relative"
-                    >
+                    <div className="rounded-3xl bg-zinc-900/50 border border-white/10 p-5 relative overflow-hidden min-w-0">
                       <p className="text-[10px] uppercase tracking-widest text-zinc-500 font-black mb-4">
                         Landed vs Rugged
                       </p>
 
-                      <div className="h-56 min-w-0">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <PieChart>
+                      <div
+                        className={`${PIE_H} w-full min-w-0 overflow-hidden`}
+                        style={{ height: PIE_H_PX }}
+                      >
+                        <ResponsiveContainer
+                          width="100%"
+                          height="100%"
+                          minWidth={1}
+                          minHeight={1}
+                        >
+                          <PieChart
+                            margin={{ top: 8, right: 8, bottom: 8, left: 8 }}
+                          >
                             <PieAny
                               data={data.pie}
                               dataKey="value"
                               nameKey="name"
-                              outerRadius={82}
-                              innerRadius={50}
+                              outerRadius={pieOuter}
+                              innerRadius={pieInner}
                               stroke="rgba(255,255,255,0.18)"
                               strokeWidth={1}
                               activeIndex={activePieIndex ?? undefined}
@@ -346,35 +371,39 @@ export default function TableAnalytics({
                         Total {data.total} • Landed {data.landed} • Rugged{" "}
                         {data.rugged}
                       </div>
-                    </motion.div>
+                    </div>
 
                     {/* Timeline */}
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.98, y: 10 }}
-                      animate={{ opacity: 1, scale: 1, y: 0 }}
-                      transition={{ duration: 0.2, delay: 0.06 }}
-                      className="rounded-3xl bg-zinc-900/50 border border-white/10 p-5 lg:col-span-2 relative"
-                    >
+                    <div className="rounded-3xl bg-zinc-900/50 border border-white/10 p-5 lg:col-span-2 relative overflow-hidden min-w-0">
                       <p className="text-[10px] uppercase tracking-widest text-zinc-500 font-black mb-4">
                         Timeline (Last {days} Days)
                       </p>
 
-                      <div className="h-56 min-w-0">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <LineChart data={data.timeline}>
+                      <div
+                        className={`${LINE_H} w-full min-w-0 overflow-hidden`}
+                        style={{ height: LINE_H_PX }}
+                      >
+                        <ResponsiveContainer
+                          width="100%"
+                          height="100%"
+                          minWidth={1}
+                          minHeight={1}
+                        >
+                          <LineChart
+                            data={data.timeline}
+                            margin={{
+                              top: 8,
+                              right: isMobile ? 8 : 12,
+                              bottom: 8,
+                              left: isMobile ? -8 : 0,
+                            }}
+                          >
                             <CartesianGrid
                               strokeDasharray="3 3"
                               stroke="rgba(255,255,255,0.10)"
                             />
                             <XAxis dataKey="day" hide />
-                            <YAxis
-                              allowDecimals={false}
-                              tick={{
-                                fill: "rgba(161,161,170,0.9)",
-                                fontSize: 11,
-                                fontWeight: 900,
-                              }}
-                            />
+                            <YAxis allowDecimals={false} tick={axisTick} />
                             <Tooltip
                               content={<NeonTooltip />}
                               wrapperStyle={{ zIndex: 9999 }}
@@ -403,23 +432,35 @@ export default function TableAnalytics({
                           </LineChart>
                         </ResponsiveContainer>
                       </div>
-                    </motion.div>
+                    </div>
                   </div>
 
                   {/* Chain bar */}
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.98, y: 10 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    transition={{ duration: 0.2, delay: 0.08 }}
-                    className="rounded-3xl bg-zinc-900/50 border border-white/10 p-5 relative"
-                  >
+                  <div className="rounded-3xl bg-zinc-900/50 border border-white/10 p-5 relative overflow-hidden min-w-0">
                     <p className="text-[10px] uppercase tracking-widest text-zinc-500 font-black mb-4">
                       Top Chains (Filtered)
                     </p>
 
-                    <div className="h-60 min-w-0">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={data.byChain} barCategoryGap={18}>
+                    <div
+                      className={`${BAR_H} w-full min-w-0 overflow-hidden`}
+                      style={{ height: BAR_H_PX }}
+                    >
+                      <ResponsiveContainer
+                        width="100%"
+                        height="100%"
+                        minWidth={1}
+                        minHeight={1}
+                      >
+                        <BarChart
+                          data={data.byChain}
+                          barCategoryGap={isMobile ? 10 : 18}
+                          margin={{
+                            top: 8,
+                            right: isMobile ? 8 : 12,
+                            bottom: isMobile ? 28 : 18,
+                            left: isMobile ? -8 : 0,
+                          }}
+                        >
                           <CartesianGrid
                             strokeDasharray="3 3"
                             stroke="rgba(255,255,255,0.10)"
@@ -427,20 +468,12 @@ export default function TableAnalytics({
                           <XAxis
                             dataKey="chain"
                             interval={0}
-                            tick={{
-                              fill: "rgba(161,161,170,0.9)",
-                              fontSize: 11,
-                              fontWeight: 900,
-                            }}
+                            tick={axisTick}
+                            angle={isMobile ? -18 : 0}
+                            textAnchor={isMobile ? "end" : "middle"}
+                            height={isMobile ? 36 : 30}
                           />
-                          <YAxis
-                            allowDecimals={false}
-                            tick={{
-                              fill: "rgba(161,161,170,0.9)",
-                              fontSize: 11,
-                              fontWeight: 900,
-                            }}
-                          />
+                          <YAxis allowDecimals={false} tick={axisTick} />
                           <Tooltip
                             content={<NeonTooltip />}
                             wrapperStyle={{ zIndex: 9999 }}
@@ -453,7 +486,7 @@ export default function TableAnalytics({
                         </BarChart>
                       </ResponsiveContainer>
                     </div>
-                  </motion.div>
+                  </div>
                 </motion.div>
               ) : (
                 <motion.div
@@ -464,8 +497,7 @@ export default function TableAnalytics({
                   transition={{ duration: 0.16 }}
                   className="space-y-6"
                 >
-                  {/* stat skeleton */}
-                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3 min-w-0">
                     {Array.from({ length: 5 }).map((_, i) => (
                       <div
                         key={i}
@@ -474,7 +506,7 @@ export default function TableAnalytics({
                     ))}
                   </div>
 
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 min-w-0">
                     <div className="h-56 rounded-3xl bg-zinc-900/50 border border-white/10 animate-pulse" />
                     <div className="h-56 lg:col-span-2 rounded-3xl bg-zinc-900/50 border border-white/10 animate-pulse" />
                   </div>
@@ -509,14 +541,14 @@ function Stat({
   return (
     <div
       className={[
-        "rounded-2xl bg-zinc-900/60 border border-white/10 p-4",
+        "rounded-2xl bg-zinc-900/60 border border-white/10 p-4 min-w-0 overflow-hidden",
         accentCls,
       ].join(" ")}
     >
       <p className="text-[10px] uppercase tracking-widest text-zinc-500 font-black">
         {label}
       </p>
-      <div className="mt-2 text-xl text-zinc-100 font-black font-[var(--font-display)]">
+      <div className="mt-2 text-xl text-zinc-100 font-black font-[var(--font-display)] truncate">
         {value}
       </div>
     </div>
