@@ -39,8 +39,6 @@ export default function LandingHero({ isAuthed }: { isAuthed: boolean }) {
           Airdrop Logbook
           <span className="mx-1 h-1 w-1 rounded-full bg-white/20" />
           Ops-grade tracking
-          <span className="mx-1 h-1 w-1 rounded-full bg-white/20" />
-          built by <span className="text-emerald-300">0x5zen</span>
         </motion.div>
 
         <div className="mt-10 grid grid-cols-1 gap-10 items-center">
@@ -87,9 +85,10 @@ export default function LandingHero({ isAuthed }: { isAuthed: boolean }) {
               }}
               className="text-[13px] md:text-[14px] font-bold text-zinc-400 leading-relaxed max-w-2xl"
             >
-              Log every mission tasks, wallets, socials, notes.then flip
-              statuses in one click. Track what actually works with outcomes:
-              landed vs rugged, timeline signals, and chain breakdowns.
+              Track the grind. Analyze the outcomes. Keep your airdrop tasks,
+              wallets, and socials in one place. Flip statuses instantly and let
+              the dashboard do the math on your win rate, rugged projects, and
+              top chains.
             </motion.p>
 
             {/* CTA ROW */}

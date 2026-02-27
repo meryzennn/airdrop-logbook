@@ -517,7 +517,7 @@ function CosmicSearchInput({
           type="text"
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          placeholder="Search intel..."
+          placeholder="Search Airdrop..."
           onKeyDown={(e) => {
             if (e.key === "Enter") {
               e.preventDefault();
@@ -1268,7 +1268,7 @@ export default function AirdropClientTable({
       <GlassCard className="p-12 text-center border-dashed border-zinc-800 font-[var(--font-body)]">
         <AddAirdropModal userId={userId} />
         <p className="mt-4 text-zinc-500 font-black uppercase tracking-widest leading-none">
-          No Intel Found
+          No Airdrop Found
         </p>
       </GlassCard>
     );
@@ -1635,7 +1635,7 @@ export default function AirdropClientTable({
             onChange={toggleSelectAll}
           />
           <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest leading-none">
-            Select All Intel
+            Select All
           </span>
         </div>
 
@@ -2077,7 +2077,8 @@ export default function AirdropClientTable({
                 Confirm Deletion
               </h3>
               <p className="text-xs text-zinc-500 mb-8 uppercase tracking-widest font-bold leading-none">
-                Deleted intel is gone forever.
+                Poof! 💨 Are you sure you want to delete this? It's going
+                straight to the void.
               </p>
               <div className="flex gap-3">
                 <button
@@ -2131,7 +2132,7 @@ export default function AirdropClientTable({
               YOU GOT RUGGED!
             </h1>
             <p className="text-base md:text-lg text-red-300 font-bold uppercase tracking-widest max-w-xl leading-none">
-              Another mission compromised. tactical dust off.
+              No drop this time. Better luck on the next project.
             </p>
           </motion.div>
         )}
@@ -2156,7 +2157,8 @@ export default function AirdropClientTable({
               BAG SECURED!
             </h1>
             <p className="text-base md:text-lg text-emerald-300 font-bold uppercase tracking-widest leading-none">
-              Mission successful. Intel secured.
+              "Bags secured. Tokens safely landed. Time to celebrate and plan
+              the next move!"
             </p>
           </motion.div>
         )}

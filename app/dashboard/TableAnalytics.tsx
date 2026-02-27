@@ -233,7 +233,7 @@ export default function TableAnalytics({
 
             <div className="min-w-0">
               <p className="text-[11px] font-black uppercase tracking-widest text-zinc-200">
-                Intel Analytics
+                Grind Analytics
               </p>
               <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500 truncate">
                 Based on current filters / search

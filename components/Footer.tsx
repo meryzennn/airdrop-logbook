@@ -4,6 +4,7 @@ import React, { useMemo } from "react";
 import { motion } from "framer-motion";
 import GithubStarButton from "@/components/footer/GithubStarButton";
 import SocialHubButton from "@/components/footer/SocialHubButton";
+import SocialTooltipBar from "@/components/footer/SocialTooltipBar";
 
 export default function Footer() {
   const year = useMemo(() => new Date().getFullYear(), []);
@@ -28,7 +29,7 @@ export default function Footer() {
         <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-emerald-500/45 to-transparent" />
 
         <div className="mx-auto max-w-6xl px-5 py-10">
-          <div className="flex flex-col gap-7 md:flex-row md:items-center md:justify-between">
+          <div className="flex flex-col gap-8 md:flex-row md:items-center md:justify-between">
             {/* left: brand + copy */}
             <div className="space-y-3">
               <div className="inline-flex items-center gap-2">
@@ -50,15 +51,32 @@ export default function Footer() {
               </p>
             </div>
 
-            {/* right: actions (hapus kalau lu ga mau button sama sekali) */}
-            <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center md:justify-end">
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-2">
-                <div className="flex flex-wrap items-center gap-2">
-                  <SocialHubButton href={SOCIAL_HUB} text="Social Hub" />
-                  <GithubStarButton
-                    href="https://github.com/meryzennn/airdrop-logbook"
-                    label="Give Star on GitHub"
-                  />
+            {/* right: socials top + buttons bottom (rata kanan) */}
+            <div className="w-full md:w-auto">
+              <div className="flex w-full md:justify-end">
+                <div className="flex w-full flex-col items-end gap-3 md:w-auto">
+                  {/* TOP: SocialTooltipBar */}
+                  <div className="ml-auto">
+                    <SocialTooltipBar />
+                  </div>
+
+                  {/* BOTTOM: Give Star (left) + Social Hub (right) */}
+                  <div
+                    className="
+                      w-full md:w-auto
+                      overflow-x-auto py-1
+                      [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden
+                    "
+                  >
+                    {/* ml-auto biar nempel kanan kalau muat */}
+                    <div className="ml-auto flex w-max items-center gap-2">
+                      <GithubStarButton
+                        href="https://github.com/meryzennn/airdrop-logbook"
+                        label="Give Star on GitHub"
+                      />
+                      <SocialHubButton href={SOCIAL_HUB} text="Social Hub" />
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -70,7 +88,7 @@ export default function Footer() {
               © {year} 0x5zen • Airdrop Logbook
             </p>
             <p className="text-[10px] font-black uppercase tracking-widest text-zinc-600">
-              Intel first. HYPE later.
+              Build First . Log Fast . Stay Ops-mode
             </p>
           </div>
         </div>

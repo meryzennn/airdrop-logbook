@@ -86,7 +86,7 @@ export default function AddAirdropModal({ userId }: { userId: string }) {
                           New Target
                         </h2>
                         <p className="mt-1 text-[10px] font-black uppercase tracking-widest text-zinc-500">
-                          Add intel • Set task date • Track outcome
+                          Add Task • Set task date • Track outcome
                         </p>
                       </div>
                     </div>

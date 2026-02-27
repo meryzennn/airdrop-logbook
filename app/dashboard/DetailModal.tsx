@@ -360,7 +360,7 @@ export const DetailModal = ({ isOpen, onClose, data }: any) => {
             {/* Intel Log */}
             <div className="bg-zinc-950 p-6 rounded-3xl border border-white/5 mb-6 shadow-inner">
               <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-3 flex items-center gap-2">
-                <Clock3 size={14} className="text-emerald-500" /> Intel Log
+                <Clock3 size={14} className="text-emerald-500" /> Airdrop Log
               </p>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-[11px]">
@@ -417,8 +417,7 @@ export const DetailModal = ({ isOpen, onClose, data }: any) => {
             {/* Notes */}
             <div className="bg-zinc-950 p-6 rounded-3xl border border-white/5 shadow-inner">
               <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-3 flex items-center gap-2">
-                <FileText size={14} className="text-emerald-500" /> Mission
-                Intel
+                <FileText size={14} className="text-emerald-500" /> Notes
               </p>
               <p className="text-sm text-zinc-300 font-medium leading-relaxed whitespace-pre-wrap break-words">
                 {data.description || "No tactical notes recorded."}

@@ -81,7 +81,7 @@ export const EditModal = ({ isOpen, onClose, data, userId }: any) => {
                           Edit Target
                         </h2>
                         <p className="mt-1 text-[10px] font-black uppercase tracking-widest text-zinc-500">
-                          Update intel • Fix task date • Keep it clean
+                          Update Grind • Fix task date • Keep it clean
                         </p>
                       </div>
                     </div>
