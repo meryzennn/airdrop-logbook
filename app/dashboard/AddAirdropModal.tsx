@@ -5,27 +5,47 @@ import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { AnimatedGradientButton } from "@/components/ui/AnimatedGradientButton";
 import { AirdropForm } from "@/components/ui/AirdropForm";
+import NeonDatePicker from "@/components/ui/NeonDatePicker";
 import { createAirdrop } from "./actions";
-import { Plus, Target } from "lucide-react";
+import { Plus, Target, X } from "lucide-react";
 
 export default function AddAirdropModal({ userId }: { userId: string }) {
   const [isOpen, setIsOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [mounted, setMounted] = useState(false);
 
+  useEffect(() => setMounted(true), []);
+
   useEffect(() => {
-    setMounted(true);
-  }, []);
+    if (!isOpen) {
+      document.body.style.overflow = "unset";
+      return;
+    }
+    document.body.style.overflow = "hidden";
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setIsOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+
+    return () => {
+      document.body.style.overflow = "unset";
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [isOpen]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (isSubmitting) return;
+
     setIsSubmitting(true);
-
-    const formData = new FormData(e.currentTarget);
-    await createAirdrop(formData, userId);
-
-    setIsSubmitting(false);
-    setIsOpen(false);
+    try {
+      const formData = new FormData(e.currentTarget);
+      await createAirdrop(formData, userId);
+      setIsOpen(false);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -38,53 +58,77 @@ export default function AddAirdropModal({ userId }: { userId: string }) {
         createPortal(
           <AnimatePresence>
             {isOpen && (
-              // Added py-8 to give top/bottom margin on scroll
-              <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 py-8 sm:p-6">
+              <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 py-8 sm:p-6">
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   onClick={() => setIsOpen(false)}
-                  className="absolute inset-0 bg-zinc-950/80 backdrop-blur-sm"
+                  className="absolute inset-0 bg-zinc-950/85 backdrop-blur-sm"
                 />
 
                 <motion.div
-                  initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                  initial={{ scale: 0.94, opacity: 0, y: 18 }}
                   animate={{ scale: 1, opacity: 1, y: 0 }}
-                  exit={{ scale: 0.9, opacity: 0, y: 20 }}
-                  transition={{ type: "spring", damping: 25, stiffness: 300 }}
-                  // Added max-h-[90vh] and overflow-y-auto to make it scrollable on mobile
-                  // Changed p-10 to p-5 md:p-10 for responsive padding
-                  className="relative w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-3xl border border-zinc-200 dark:border-white/10 bg-zinc-50 dark:bg-zinc-900/95 p-5 md:p-10 shadow-[0_0_60px_rgba(16,185,129,0.3)] backdrop-blur-xl custom-scrollbar"
+                  exit={{ scale: 0.94, opacity: 0, y: 18 }}
+                  transition={{ type: "spring", damping: 22, stiffness: 320 }}
+                  className="relative w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-[32px] border border-emerald-500/20 bg-zinc-950/90 p-5 md:p-8 shadow-[0_0_70px_rgba(16,185,129,0.18)] backdrop-blur-xl [ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                  onClick={(e) => e.stopPropagation()}
                 >
-                  <header className="flex items-center gap-3 mb-6 md:mb-10 border-b border-zinc-200 dark:border-zinc-800 pb-4 md:pb-6">
-                    <Target className="w-6 h-6 md:w-8 md:h-8 text-emerald-500 shrink-0" />
-                    <h2 className="text-xl md:text-3xl font-extrabold text-zinc-900 dark:text-zinc-50">
-                      New <span className="text-emerald-500">Airdrop</span>{" "}
-                      Entry 🎯
-                    </h2>
+                  {/* header */}
+                  <header className="flex items-start justify-between gap-4 mb-6 border-b border-white/5 pb-5">
+                    <div className="flex items-center gap-3">
+                      <div className="h-11 w-11 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 grid place-items-center shadow-inner">
+                        <Target className="w-6 h-6 text-emerald-400" />
+                      </div>
+                      <div>
+                        <h2 className="font-[var(--font-display)] text-2xl md:text-3xl font-black text-zinc-50 uppercase tracking-tight">
+                          New Target
+                        </h2>
+                        <p className="mt-1 text-[10px] font-black uppercase tracking-widest text-zinc-500">
+                          Add intel • Set task date • Track outcome
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setIsOpen(false)}
+                      className="h-10 w-10 rounded-2xl bg-zinc-900/60 border border-white/10 hover:border-red-500/30 grid place-items-center transition-all active:scale-95"
+                      aria-label="Close"
+                    >
+                      <X className="w-4 h-4 text-zinc-200" />
+                    </button>
                   </header>
 
-                  <form
-                    onSubmit={handleSubmit}
-                    className="space-y-8 md:space-y-12"
-                  >
+                  <form onSubmit={handleSubmit} className="space-y-6">
+                    {/* ✅ manual date DD/MM/YYYY + calendar */}
+                    <NeonDatePicker
+                      name="taskDate"
+                      label="Task Date"
+                      required
+                      // kalau mau default hari ini, uncomment:
+                      // defaultValue={new Date()}
+                    />
+
+                    {/* existing form fields */}
                     <AirdropForm />
 
-                    <footer className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-6 border-t border-zinc-200 dark:border-zinc-800">
+                    <footer className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-6 border-t border-white/5">
                       <button
                         type="button"
                         onClick={() => setIsOpen(false)}
-                        className="w-full sm:w-auto px-5 py-3 sm:py-2.5 text-sm font-bold text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 transition-colors rounded-xl bg-zinc-200 dark:bg-zinc-800"
+                        className="w-full sm:w-auto px-5 py-3 text-[11px] font-black text-zinc-400 bg-zinc-900/60 border border-white/10 rounded-2xl uppercase tracking-widest hover:border-white/20 transition-all"
                       >
-                        CANCEL
+                        Cancel
                       </button>
+
                       <button
                         type="submit"
                         disabled={isSubmitting}
-                        className="w-full sm:w-auto px-7 py-3 sm:py-2.5 text-sm font-bold text-white bg-emerald-500 rounded-xl hover:bg-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.5)] transition-all disabled:opacity-50"
+                        className="w-full sm:w-auto px-6 py-3 text-[11px] font-black text-zinc-950 bg-emerald-500 rounded-2xl hover:bg-emerald-400 shadow-[0_0_18px_rgba(16,185,129,0.35)] uppercase tracking-widest transition-all disabled:opacity-50 active:scale-95"
                       >
-                        {isSubmitting ? "SAVING TARGET..." : "SAVE ENTRY"}
+                        {isSubmitting ? "Saving..." : "Save Entry"}
                       </button>
                     </footer>
                   </form>

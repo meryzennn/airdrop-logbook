@@ -103,7 +103,7 @@ function Clamp({
   );
 }
 
-function fmtDate(v: any) {
+function fmtDateTime(v: any) {
   if (!v) return "-";
   const d = new Date(v);
   if (Number.isNaN(d.getTime())) return "-";
@@ -111,6 +111,17 @@ function fmtDate(v: any) {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(d);
+}
+
+function fmtDateOnly(v: any) {
+  if (!v) return "-";
+  const d = new Date(v);
+  if (Number.isNaN(d.getTime())) return "-";
+  // DD/MM/YYYY
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const yyyy = d.getFullYear();
+  return `${dd}/${mm}/${yyyy}`;
 }
 
 export const DetailModal = ({ isOpen, onClose, data }: any) => {
@@ -162,7 +173,7 @@ export const DetailModal = ({ isOpen, onClose, data }: any) => {
   return createPortal(
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 py-10 md:py-16 font-[var(--font-body)]">
+        <div className="fixed inset-0 z-[220] flex items-center justify-center p-4 py-10 md:py-16 font-[var(--font-body)]">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -256,17 +267,17 @@ export const DetailModal = ({ isOpen, onClose, data }: any) => {
                 </p>
 
                 {data.wallet ? (
-                  <div className="flex items-center justify-between gap-3 bg-zinc-950/70 p-3 rounded-2xl border border-white/10 shadow-inner hover:border-emerald-500/30 transition-all min-w-0">
+                  <div className="flex items-center justify-between gap-3 bg-zinc-950/80 p-4 rounded-2xl border border-white/15 shadow-inner hover:border-emerald-500/35 transition-all min-w-0">
                     <span
                       title={data.wallet}
-                      className="font-mono text-[11px] text-zinc-100 truncate min-w-0 flex-1"
+                      className="font-mono text-[14px] md:text-[16px] text-zinc-100 truncate min-w-0 flex-1 tracking-wide"
                     >
                       {data.wallet}
                     </span>
 
                     <button
                       onClick={handleCopy}
-                      className={`p-2.5 shrink-0 rounded-xl transition-all border shadow-sm active:scale-90 ${
+                      className={`p-3 shrink-0 rounded-xl transition-all border shadow-sm active:scale-90 ${
                         copied
                           ? "bg-emerald-500 text-zinc-950 border-emerald-500/40"
                           : "bg-white/5 hover:bg-emerald-500 hover:text-zinc-950 text-zinc-200 border-white/10"
@@ -356,28 +367,40 @@ export const DetailModal = ({ isOpen, onClose, data }: any) => {
                 <LogRow
                   icon={<CalendarDays size={14} className="text-zinc-400" />}
                   label="Created"
-                  value={fmtDate(data.createdAt)}
+                  value={fmtDateTime(data.createdAt)}
                 />
+
                 <LogRow
                   icon={<CalendarDays size={14} className="text-zinc-400" />}
                   label="Task Date"
-                  value={fmtDate(data.taskDate)}
+                  value={fmtDateOnly(data.taskDate)}
                 />
-                <LogRow
-                  icon={<CalendarDays size={14} className="text-emerald-500" />}
-                  label="Landed At"
-                  value={fmtDate(data.landedAt)}
-                />
-                <LogRow
-                  icon={<CalendarDays size={14} className="text-red-500" />}
-                  label="Rugged At"
-                  value={fmtDate(data.ruggedAt)}
-                />
+
+                {/* ✅ tampil hanya kalau ada */}
+                {data.landedAt ? (
+                  <LogRow
+                    icon={
+                      <CalendarDays size={14} className="text-emerald-500" />
+                    }
+                    label="Landed At"
+                    value={fmtDateTime(data.landedAt)}
+                  />
+                ) : null}
+
+                {data.ruggedAt ? (
+                  <LogRow
+                    icon={<CalendarDays size={14} className="text-red-500" />}
+                    label="Rugged At"
+                    value={fmtDateTime(data.ruggedAt)}
+                  />
+                ) : null}
+
                 <LogRow
                   icon={<Clock3 size={14} className="text-zinc-400" />}
                   label="Last Updated"
-                  value={fmtDate(data.updatedAt)}
+                  value={fmtDateTime(data.updatedAt)}
                 />
+
                 <div className="bg-zinc-900/40 border border-white/10 rounded-2xl p-3">
                   <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">
                     Landed Value
