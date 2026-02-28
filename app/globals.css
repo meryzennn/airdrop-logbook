@@ -27,3 +27,8 @@ body {
 html {
   scrollbar-gutter: stable;
 }
+/* Smooth anchor scrolling */
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 88px; /* sesuaikan tinggi navbar kamu */
+}
