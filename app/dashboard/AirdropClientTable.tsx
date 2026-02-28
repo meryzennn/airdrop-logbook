@@ -626,7 +626,6 @@ function PopoverPortal({
 
   useEffect(() => setMounted(true), []);
 
-  // ✅ hitung posisi sebelum paint biar gak “loncat”
   useLayoutEffect(() => {
     if (!open) return;
     updatePos();
@@ -872,11 +871,17 @@ export default function AirdropClientTable({
   const [filterOpen, setFilterOpen] = useState(false);
   const filterBtnRef = useRef<HTMLButtonElement | null>(null);
 
-  // chain filter stores normalized key (lowercase)
+  // ✅ Applied filters (yang beneran kepake buat table)
   const [chainKey, setChainKey] = useState<string>("ALL");
   const [statusSet, setStatusSet] = useState<Set<Status>>(new Set()); // empty => all
   const [fromISO, setFromISO] = useState<string>(""); // YYYY-MM-DD
   const [toISO, setToISO] = useState<string>(""); // YYYY-MM-DD
+
+  // ✅ Draft filters (yang diedit di UI, tapi belum ngaruh sebelum Apply)
+  const [chainKeyDraft, setChainKeyDraft] = useState<string>("ALL");
+  const [statusSetDraft, setStatusSetDraft] = useState<Set<Status>>(new Set());
+  const [fromISODraft, setFromISODraft] = useState<string>("");
+  const [toISODraft, setToISODraft] = useState<string>("");
 
   // mobile/desktop helpers
   const [isMobile, setIsMobile] = useState(false);
@@ -925,6 +930,15 @@ export default function AirdropClientTable({
       document.body.style.paddingRight = prevPad || "";
     };
   }, [filterOpen, isMobile]);
+
+  // ✅ setiap kali filter dibuka, isi draft dari applied
+  useEffect(() => {
+    if (!filterOpen) return;
+    setChainKeyDraft(chainKey);
+    setStatusSetDraft(new Set(statusSet));
+    setFromISODraft(fromISO);
+    setToISODraft(toISO);
+  }, [filterOpen, chainKey, statusSet, fromISO, toISO]);
 
   // pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -980,14 +994,15 @@ export default function AirdropClientTable({
   }, [airdrops]);
 
   const clearFilters = () => {
-    setChainKey("ALL");
-    setStatusSet(new Set());
-    setFromISO("");
-    setToISO("");
+    // ✅ clear draft only
+    setChainKeyDraft("ALL");
+    setStatusSetDraft(new Set());
+    setFromISODraft("");
+    setToISODraft("");
   };
 
   const toggleStatus = (s: Status) => {
-    setStatusSet((prev) => {
+    setStatusSetDraft((prev) => {
       const next = new Set(prev);
       if (next.has(s)) next.delete(s);
       else next.add(s);
@@ -996,10 +1011,18 @@ export default function AirdropClientTable({
   };
 
   const quickStatus = (preset: "ALL" | "ACTIVE" | "FINISHED") => {
-    if (preset === "ALL") return setStatusSet(new Set());
+    if (preset === "ALL") return setStatusSetDraft(new Set());
     if (preset === "ACTIVE")
-      return setStatusSet(new Set(["PLANNED", "IN_PROGRESS", "DONE"]));
-    return setStatusSet(new Set(["LANDED", "RUGGED"]));
+      return setStatusSetDraft(new Set(["PLANNED", "IN_PROGRESS", "DONE"]));
+    return setStatusSetDraft(new Set(["LANDED", "RUGGED"]));
+  };
+
+  const applyFilters = () => {
+    setChainKey(chainKeyDraft);
+    setStatusSet(new Set(statusSetDraft));
+    setFromISO(fromISODraft);
+    setToISO(toISODraft);
+    setFilterOpen(false);
   };
 
   // filter + search + sort (newest on top)
@@ -1029,19 +1052,19 @@ export default function AirdropClientTable({
       });
     }
 
-    // chain
+    // chain (applied)
     if (chainKey !== "ALL") {
       rows = rows.filter(
         (a) => clean(a?.chain).toLowerCase() === chainKey.toLowerCase(),
       );
     }
 
-    // status
+    // status (applied)
     if (statusSet.size > 0) {
       rows = rows.filter((a) => statusSet.has(a.status as Status));
     }
 
-    // date range on taskDate (inclusive)
+    // date range on taskDate (inclusive) (applied)
     const fromT = fromISO ? safeTime(`${fromISO}T00:00:00`) : null;
     const toT = toISO ? safeTime(`${toISO}T23:59:59`) : null;
 
@@ -1137,7 +1160,7 @@ export default function AirdropClientTable({
     setMenuAnchorEl(null);
   }, [currentPage]);
 
-  // filter body (reused in popover/sheet)
+  // filter body (reused in popover/sheet)  ✅ uses DRAFT
   const filterBody = (
     <div className="p-5">
       <div className="mb-4">
@@ -1145,8 +1168,8 @@ export default function AirdropClientTable({
           Chain
         </p>
         <select
-          value={chainKey}
-          onChange={(e) => setChainKey(e.target.value)}
+          value={chainKeyDraft}
+          onChange={(e) => setChainKeyDraft(e.target.value)}
           className="w-full h-11 rounded-2xl bg-zinc-900/60 border border-white/10 text-zinc-100 font-black text-[11px] uppercase tracking-widest px-4 outline-none focus:border-emerald-500/30"
         >
           <option value="ALL">All Chains</option>
@@ -1190,7 +1213,7 @@ export default function AirdropClientTable({
 
         <div className="flex flex-wrap gap-2">
           {STATUS_OPTIONS.map((s) => {
-            const on = statusSet.has(s);
+            const on = statusSetDraft.has(s);
             return (
               <button
                 key={s}
@@ -1225,8 +1248,8 @@ export default function AirdropClientTable({
             </p>
             <input
               type="date"
-              value={fromISO}
-              onChange={(e) => setFromISO(e.target.value)}
+              value={fromISODraft}
+              onChange={(e) => setFromISODraft(e.target.value)}
               className="w-full h-11 rounded-2xl bg-zinc-900/60 border border-white/10 text-zinc-100 font-black text-[11px] uppercase tracking-widest px-4 outline-none focus:border-emerald-500/30"
             />
           </div>
@@ -1236,8 +1259,8 @@ export default function AirdropClientTable({
             </p>
             <input
               type="date"
-              value={toISO}
-              onChange={(e) => setToISO(e.target.value)}
+              value={toISODraft}
+              onChange={(e) => setToISODraft(e.target.value)}
               className="w-full h-11 rounded-2xl bg-zinc-900/60 border border-white/10 text-zinc-100 font-black text-[11px] uppercase tracking-widest px-4 outline-none focus:border-emerald-500/30"
             />
           </div>
@@ -1254,7 +1277,7 @@ export default function AirdropClientTable({
         </button>
         <button
           type="button"
-          onClick={() => setFilterOpen(false)}
+          onClick={applyFilters}
           className="flex-1 h-11 rounded-2xl bg-emerald-500 text-zinc-950 font-black text-[10px] uppercase tracking-widest hover:bg-emerald-400 transition-all active:scale-95"
         >
           Apply
@@ -1277,10 +1300,15 @@ export default function AirdropClientTable({
 
   return (
     <div className="space-y-6 relative font-[var(--font-body)]">
-      {/* Header */}
-      <div className="px-2 space-y-4">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div className="flex items-center gap-4 w-full md:w-auto">
+      {/* Analytics (tetep di atas) */}
+      <TableAnalytics rows={filteredSorted} days={30} />
+
+      {/* ✅ Controls / Header (mobile tetap, desktop sesuai request) */}
+      <div className="px-2">
+        {/* MOBILE (tetap) */}
+        <div className="md:hidden space-y-3">
+          {/* row 1: add + delete */}
+          <div className="flex items-center gap-3">
             <AddAirdropModal userId={userId} />
             <DeleteBinButton
               onClick={() => setDeleteModalOpen(true)}
@@ -1289,7 +1317,20 @@ export default function AirdropClientTable({
             />
           </div>
 
-          <div className="w-full md:max-w-[560px] flex items-center gap-3">
+          {/* row 2: logs + showing */}
+          <div className="flex items-center justify-between gap-3">
+            <div className="text-[10px] font-black text-zinc-500 uppercase tracking-widest leading-none bg-zinc-800/50 px-4 py-2.5 rounded-lg border border-white/5 shadow-xl">
+              LOGS PAGE {currentPage} OF {totalPages}
+            </div>
+
+            <div className="text-[10px] font-black text-zinc-500 uppercase tracking-widest leading-none">
+              SHOWING <span className="text-emerald-500">{showCount}</span> /{" "}
+              {airdrops.length}
+            </div>
+          </div>
+
+          {/* row 3: search + filter */}
+          <div className="flex items-center gap-3">
             <div className="flex-1 min-w-0">
               <CosmicSearchInput
                 value={searchDraft}
@@ -1312,19 +1353,61 @@ export default function AirdropClientTable({
           </div>
         </div>
 
-        <div className="flex items-center justify-between gap-4">
-          <div className="text-[10px] font-black text-zinc-500 uppercase tracking-widest leading-none bg-zinc-800/50 px-4 py-2.5 rounded-lg border border-white/5 shadow-xl">
-            LOGS PAGE {currentPage} OF {totalPages}
-          </div>
+        {/* DESKTOP (LOGS di bawah Add, SHOWING di bawah Filter) */}
+        <div className="hidden md:block">
+          <div className="flex items-start justify-between gap-6">
+            {/* left: add + delete, logs di bawah */}
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center gap-4">
+                <AddAirdropModal userId={userId} />
+                <DeleteBinButton
+                  onClick={() => setDeleteModalOpen(true)}
+                  disabled={selectedIds.length === 0 || isPending}
+                  label={`DELETE (${selectedIds.length})`}
+                />
+              </div>
 
-          <div className="text-[10px] font-black text-zinc-500 uppercase tracking-widest leading-none">
-            SHOWING <span className="text-emerald-500">{showCount}</span> /{" "}
-            {airdrops.length}
+              <div className="text-[10px] font-black text-zinc-500 uppercase tracking-widest leading-none bg-zinc-800/50 px-4 py-2.5 rounded-lg border border-white/5 shadow-xl w-fit">
+                LOGS PAGE {currentPage} OF {totalPages}
+              </div>
+            </div>
+
+            {/* right: search + filter, showing di bawah filter */}
+            <div className="w-[640px]">
+              <div className="flex items-center gap-3">
+                <div className="flex-1 min-w-0">
+                  <CosmicSearchInput
+                    value={searchDraft}
+                    onChange={setSearchDraft}
+                    onSearch={commitSearch}
+                  />
+                </div>
+
+                <FilterButton
+                  active={
+                    filterOpen ||
+                    chainKey !== "ALL" ||
+                    statusSet.size > 0 ||
+                    !!fromISO ||
+                    !!toISO
+                  }
+                  onClick={() => setFilterOpen((v) => !v)}
+                  buttonRef={filterBtnRef}
+                />
+              </div>
+
+              <div className="mt-2 flex justify-end">
+                <div className="text-[10px] font-black text-zinc-500 uppercase tracking-widest leading-none">
+                  SHOWING <span className="text-emerald-500">{showCount}</span>{" "}
+                  / {airdrops.length}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Filter UI */}
+      {/* Filter UI (portal) */}
       {isMobile ? (
         <FilterSheet open={filterOpen} onClose={() => setFilterOpen(false)}>
           {filterBody}
@@ -1352,9 +1435,6 @@ export default function AirdropClientTable({
           {filterBody}
         </PopoverPortal>
       )}
-
-      {/* Analytics */}
-      <TableAnalytics rows={filteredSorted} days={30} />
 
       {/* Desktop Table */}
       <div className="hidden md:block">
@@ -1392,7 +1472,6 @@ export default function AirdropClientTable({
               </tr>
             </thead>
 
-            {/* ✅ animasi per-page (bukan per-row layout) */}
             <AnimatePresence mode="wait" initial={false}>
               <motion.tbody
                 key={`page-${currentPage}`}
@@ -1639,7 +1718,6 @@ export default function AirdropClientTable({
           </span>
         </div>
 
-        {/* ✅ animasi per-page */}
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={`m-page-${currentPage}`}

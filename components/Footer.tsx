@@ -42,7 +42,7 @@ export default function Footer() {
               <p className="max-w-xl text-[12px] font-bold leading-relaxed text-zinc-400">
                 A clean ops dashboard for Web3 hunters.
                 <br />
-                Log missions, track wallets, and move fast no noise, just
+                Log the grind, track wallets, and move fast no noise, just
                 progress.
               </p>
 
