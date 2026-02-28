@@ -51,7 +51,7 @@ export const AirdropForm = ({ defaultValues }: AirdropFormProps) => {
           />
           <UiverseInput
             id="tokenTicker"
-            label="Token Ticker (e.g., $RYZEN)"
+            label="Token Ticker (e.g., JUP)"
             defaultValue={defaultValues?.tokenTicker}
           />
 

@@ -914,22 +914,6 @@ export default function AirdropClientTable({
   }, []);
 
   // ✅ lock scroll hanya di MOBILE + kompensasi scrollbar (biar desktop gak geser)
-  useEffect(() => {
-    if (!filterOpen || !isMobile) return;
-
-    const prevOverflow = document.body.style.overflow;
-    const prevPad = document.body.style.paddingRight;
-
-    const scrollbarW = window.innerWidth - document.documentElement.clientWidth;
-
-    document.body.style.overflow = "hidden";
-    document.body.style.paddingRight = `${scrollbarW}px`;
-
-    return () => {
-      document.body.style.overflow = prevOverflow || "";
-      document.body.style.paddingRight = prevPad || "";
-    };
-  }, [filterOpen, isMobile]);
 
   // ✅ setiap kali filter dibuka, isi draft dari applied
   useEffect(() => {
@@ -972,6 +956,52 @@ export default function AirdropClientTable({
   const [selectedAirdropData, setSelectedAirdropData] = useState<any | null>(
     null,
   );
+
+  // Prevent scroll bleed when any full-screen overlay/modal is open (works on iOS too)
+  useEffect(() => {
+    // Lock also when mobile filter sheet is open
+    const lock =
+      (isMobile && filterOpen) ||
+      showRuggedOverlay ||
+      showLandedOverlay ||
+      landingModalOpen ||
+      deleteModalOpen;
+
+    if (!lock) return;
+
+    const scrollY = window.scrollY;
+
+    const prevOverflow = document.body.style.overflow;
+    const prevPosition = document.body.style.position;
+    const prevTop = document.body.style.top;
+    const prevWidth = document.body.style.width;
+    const prevPad = document.body.style.paddingRight;
+
+    const scrollbarW = window.innerWidth - document.documentElement.clientWidth;
+
+    document.body.style.overflow = "hidden";
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.width = "100%";
+    document.body.style.paddingRight = `${scrollbarW}px`;
+
+    return () => {
+      document.body.style.overflow = prevOverflow || "";
+      document.body.style.position = prevPosition || "";
+      document.body.style.top = prevTop || "";
+      document.body.style.width = prevWidth || "";
+      document.body.style.paddingRight = prevPad || "";
+
+      window.scrollTo(0, scrollY);
+    };
+  }, [
+    isMobile,
+    filterOpen,
+    showRuggedOverlay,
+    showLandedOverlay,
+    landingModalOpen,
+    deleteModalOpen,
+  ]);
 
   // active item for menu
   const activeItem = useMemo(() => {
@@ -2018,7 +2048,7 @@ export default function AirdropClientTable({
       {/* Landing Value Modal */}
       <AnimatePresence>
         {landingModalOpen && (
-          <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 overscroll-contain touch-none">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -2134,7 +2164,7 @@ export default function AirdropClientTable({
       {/* Delete Confirm Modal */}
       <AnimatePresence>
         {deleteModalOpen && (
-          <div className="fixed inset-0 z-[250] flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[250] flex items-center justify-center p-4 overscroll-contain touch-none">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -2197,7 +2227,7 @@ export default function AirdropClientTable({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[1000] flex flex-col items-center justify-center bg-zinc-950/95 backdrop-blur-xl p-6 text-center"
+            className="fixed inset-0 z-[1000] flex flex-col items-center justify-center bg-zinc-950/95 backdrop-blur-xl p-6 text-center overscroll-contain touch-none"
           >
             <motion.div
               animate={{ rotate: [0, -10, 10, 0], scale: [1, 1.1, 1] }}
@@ -2222,7 +2252,7 @@ export default function AirdropClientTable({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[1000] flex flex-col items-center justify-center bg-zinc-950/95 backdrop-blur-xl p-6 text-center"
+            className="fixed inset-0 z-[1000] flex flex-col items-center justify-center bg-zinc-950/95 backdrop-blur-xl p-6 text-center overscroll-contain touch-none"
           >
             <motion.div
               animate={{ scale: [1, 1.2, 1], rotate: [0, 360] }}

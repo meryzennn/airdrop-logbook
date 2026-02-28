@@ -36,8 +36,8 @@ const formatUSD = (n: number) =>
   new Intl.NumberFormat("en-US", { maximumFractionDigits: 6 }).format(n);
 
 /**
- * Recharts typings beda2 per versi.
- * Di project lo: PieProps ga punya activeIndex -> cast ke any.
+ * Recharts typings differ across versions.
+ * In this project: PieProps may not include activeIndex -> cast to any.
  */
 const PieAny = Pie as unknown as React.ComponentType<any>;
 
@@ -66,7 +66,7 @@ export default function TableAnalytics({
 }) {
   const [open, setOpen] = useState(true);
 
-  // IMPORTANT: start false to avoid Recharts reading -1,-1 at first paint
+  // Start false to avoid Recharts reading -1,-1 at first paint
   const [chartsReady, setChartsReady] = useState(false);
 
   const [activePieIndex, setActivePieIndex] = useState<number | null>(null);
@@ -95,23 +95,72 @@ export default function TableAnalytics({
     };
   }, []);
 
-  // biar mobile gak kebanyakan bar
+  // Mobile: reduce bars count a bit
   const effectiveTopChains = useMemo(
     () => (isMobile ? Math.min(topChains, 8) : topChains),
     [isMobile, topChains],
   );
 
   const data = useMemo(() => {
-    const total = rows.length;
+    // Convert any date-ish value into ms (safe)
+    const toTime = (v: any) => {
+      if (!v) return 0;
+      const t = new Date(v).getTime();
+      return Number.isFinite(t) ? t : 0;
+    };
+
+    /**
+     * Deduplicate rows by `id` to prevent double counting in analytics.
+     * If duplicates exist, keep the newest record based on updatedAt/landedAt/etc.
+     */
+    const uniqueMap = new Map<string, any>();
+    let noIdCounter = 0;
+
+    for (const r of rows ?? []) {
+      const id = r?.id ? String(r.id) : "";
+      if (!id) {
+        uniqueMap.set(`__noid_${noIdCounter++}`, r);
+        continue;
+      }
+
+      const prev = uniqueMap.get(id);
+      if (!prev) {
+        uniqueMap.set(id, r);
+        continue;
+      }
+
+      const prevT = toTime(
+        prev?.updatedAt ??
+          prev?.landedAt ??
+          prev?.ruggedAt ??
+          prev?.taskDate ??
+          prev?.createdAt,
+      );
+      const nextT = toTime(
+        r?.updatedAt ??
+          r?.landedAt ??
+          r?.ruggedAt ??
+          r?.taskDate ??
+          r?.createdAt,
+      );
+
+      if (nextT >= prevT) uniqueMap.set(id, r);
+    }
+
+    const safeRows = Array.from(uniqueMap.values());
+
+    const total = safeRows.length;
 
     let landed = 0;
     let rugged = 0;
     let doneLike = 0;
+
+    // Sum landed values WITHOUT double-counting
     let landedUSD = 0;
 
     const byChainMap = new Map<string, number>();
 
-    for (const r of rows) {
+    for (const r of safeRows) {
       const st = String(r?.status || "");
       const chain = String(r?.chain || "UNKNOWN").toUpperCase();
       byChainMap.set(chain, (byChainMap.get(chain) ?? 0) + 1);
@@ -121,6 +170,7 @@ export default function TableAnalytics({
         const v = Number(r?.landedValue ?? 0);
         if (Number.isFinite(v) && v > 0) landedUSD += v;
       }
+
       if (st === "RUGGED") rugged++;
       if (st === "DONE" || st === "LANDED" || st === "RUGGED") doneLike++;
     }
@@ -154,7 +204,7 @@ export default function TableAnalytics({
       timelineMap.set(k, { day: k, created: 0, landed: 0, rugged: 0 });
     }
 
-    for (const r of rows) {
+    for (const r of safeRows) {
       const createdSrc = r?.taskDate ?? r?.createdAt;
       const createdK = createdSrc ? dayKey(new Date(createdSrc)) : null;
       if (createdK && timelineMap.has(createdK))
@@ -302,7 +352,7 @@ export default function TableAnalytics({
                       accent="red"
                     />
 
-                    {/* ✅ Mobile: Secured jadi panjang + gede */}
+                    {/* Mobile: Secured becomes longer + bigger */}
                     <Stat
                       label="Secured (USD)"
                       className="col-span-2 md:col-span-1 min-h-[104px] md:min-h-0"
@@ -465,7 +515,7 @@ export default function TableAnalytics({
                         minHeight={1}
                       >
                         {isMobile ? (
-                          // ✅ Mobile: horizontal bars (lebih kebaca & gede)
+                          // Mobile: horizontal bars (more readable & larger)
                           <BarChart
                             data={data.byChain}
                             layout="vertical"
@@ -498,7 +548,7 @@ export default function TableAnalytics({
                             />
                           </BarChart>
                         ) : (
-                          // Desktop: normal
+                          // Desktop: normal bars
                           <BarChart
                             data={data.byChain}
                             barCategoryGap={18}
