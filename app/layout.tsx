@@ -7,9 +7,48 @@ import StyledComponentsRegistry from "./StyledComponentsRegistry";
 
 const inter = Inter({ subsets: ["latin"] });
 
+const siteUrl =
+  process.env.NEXT_PUBLIC_SITE_URL ||
+  "https://zendrop-logbook.vercel.apphttps://zendrop-logbook.vercel.app"; // <-- ganti
+
 export const metadata: Metadata = {
-  title: "Airdrop Logbook",
+  metadataBase: new URL(siteUrl),
+
+  title: {
+    default: "Airdrop Logbook",
+    template: "%s • Airdrop Logbook",
+  },
   description: "Track your airdrop tasks efficiently",
+
+  // Good defaults for SEO
+  alternates: {
+    canonical: "/",
+  },
+
+  openGraph: {
+    type: "website",
+    url: "/",
+    siteName: "Airdrop Logbook",
+    title: "Airdrop Logbook",
+    description: "Track your airdrop tasks efficiently",
+    // images: [{ url: "/og.png", width: 1200, height: 630, alt: "Airdrop Logbook" }],
+  },
+
+  twitter: {
+    card: "summary_large_image",
+    title: "Airdrop Logbook",
+    description: "Track your airdrop tasks efficiently",
+    // images: ["/og.png"],
+  },
+
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+    },
+  },
 };
 
 export default function RootLayout({
