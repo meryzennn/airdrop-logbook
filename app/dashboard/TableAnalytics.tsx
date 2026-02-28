@@ -52,6 +52,9 @@ const renderActiveShape = (props: any) => {
   );
 };
 
+const cx = (...xs: Array<string | false | null | undefined>) =>
+  xs.filter(Boolean).join(" ");
+
 export default function TableAnalytics({
   rows,
   days = 30,
@@ -92,6 +95,12 @@ export default function TableAnalytics({
     };
   }, []);
 
+  // biar mobile gak kebanyakan bar
+  const effectiveTopChains = useMemo(
+    () => (isMobile ? Math.min(topChains, 8) : topChains),
+    [isMobile, topChains],
+  );
+
   const data = useMemo(() => {
     const total = rows.length;
 
@@ -128,7 +137,7 @@ export default function TableAnalytics({
       { name: "OTHER" as const, value: others },
     ];
 
-    // Timeline last N days (created uses taskDate fallback createdAt)
+    // Timeline last N days
     const today = new Date();
     const start = new Date(today);
     start.setDate(today.getDate() - (days - 1));
@@ -165,7 +174,7 @@ export default function TableAnalytics({
     const byChain = Array.from(byChainMap.entries())
       .map(([chain, count]) => ({ chain, count }))
       .sort((a, b) => b.count - a.count)
-      .slice(0, topChains);
+      .slice(0, effectiveTopChains);
 
     return {
       total,
@@ -179,7 +188,7 @@ export default function TableAnalytics({
       timeline,
       byChain,
     };
-  }, [rows, days, topChains]);
+  }, [rows, days, effectiveTopChains]);
 
   // toggle open: mount charts after collapse animation + 1 frame
   useEffect(() => {
@@ -193,7 +202,7 @@ export default function TableAnalytics({
     setChartsReady(false);
     timerRef.current = window.setTimeout(() => {
       requestAnimationFrame(() => setChartsReady(true));
-    }, COLLAPSE_MS + 60);
+    }, COLLAPSE_MS + 120);
 
     return () => {
       if (timerRef.current) window.clearTimeout(timerRef.current);
@@ -202,24 +211,21 @@ export default function TableAnalytics({
 
   if (!rows?.length) return null;
 
-  // responsive sizing
-  const pieOuter = isMobile ? 70 : 82;
-  const pieInner = isMobile ? 42 : 50;
+  // ====== MOBILE BIGGER SIZING ======
+  const pieOuter = isMobile ? 92 : 82;
+  const pieInner = isMobile ? 58 : 50;
 
-  const PIE_H = isMobile ? "h-[200px]" : "h-56";
-  const LINE_H = isMobile ? "h-[200px]" : "h-56";
-  const BAR_H = isMobile ? "h-[240px]" : "h-60";
-
-  // extra safety: inline height (prevents 0px edge cases)
-  const PIE_H_PX = isMobile ? 200 : 224;
-  const LINE_H_PX = isMobile ? 200 : 224;
-  const BAR_H_PX = isMobile ? 240 : 240;
+  const PIE_H_PX = isMobile ? 240 : 224;
+  const LINE_H_PX = isMobile ? 240 : 224;
+  const BAR_H_PX = isMobile ? 260 : 240;
 
   const axisTick = {
-    fill: "rgba(161,161,170,0.9)",
-    fontSize: isMobile ? 10 : 11,
+    fill: "rgba(161,161,170,0.95)",
+    fontSize: isMobile ? 12 : 11,
     fontWeight: 900,
   } as const;
+
+  const yAxisWidth = isMobile ? 42 : 40;
 
   return (
     <div className="px-2 mt-4 md:mt-0">
@@ -263,7 +269,7 @@ export default function TableAnalytics({
           initial={false}
           animate={
             open
-              ? { maxHeight: 1400, opacity: 1, y: 0 }
+              ? { maxHeight: 2200, opacity: 1, y: 0 }
               : { maxHeight: 0, opacity: 0, y: 8 }
           }
           transition={{ duration: COLLAPSE_MS / 1000, ease: "easeInOut" }}
@@ -274,7 +280,7 @@ export default function TableAnalytics({
             <AnimatePresence mode="wait" initial={false}>
               {chartsReady ? (
                 <motion.div
-                  key="charts"
+                  key={`charts-${isMobile ? "m" : "d"}`}
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 8 }}
@@ -295,11 +301,15 @@ export default function TableAnalytics({
                       value={`${data.ruggedRate}%`}
                       accent="red"
                     />
+
+                    {/* ✅ Mobile: Secured jadi panjang + gede */}
                     <Stat
                       label="Secured (USD)"
+                      className="col-span-2 md:col-span-1 min-h-[104px] md:min-h-0"
+                      valueClassName="text-3xl md:text-xl"
                       value={
                         <span className="inline-flex items-center gap-2">
-                          <Coins size={16} className="text-emerald-400" />
+                          <Coins size={20} className="text-emerald-400" />
                           {data.landedUSD > 0
                             ? `$ ${formatUSD(data.landedUSD)}`
                             : "—"}
@@ -311,13 +321,13 @@ export default function TableAnalytics({
                   {/* Charts grid */}
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 min-w-0">
                     {/* Pie */}
-                    <div className="rounded-3xl bg-zinc-900/50 border border-white/10 p-5 relative overflow-hidden min-w-0">
+                    <div className="rounded-3xl bg-zinc-900/50 border border-white/10 p-4 md:p-5 relative overflow-hidden min-w-0">
                       <p className="text-[10px] uppercase tracking-widest text-zinc-500 font-black mb-4">
                         Landed vs Rugged
                       </p>
 
                       <div
-                        className={`${PIE_H} w-full min-w-0 overflow-hidden`}
+                        className="relative w-full"
                         style={{ height: PIE_H_PX }}
                       >
                         <ResponsiveContainer
@@ -358,7 +368,6 @@ export default function TableAnalytics({
                                 />
                               ))}
                             </PieAny>
-
                             <Tooltip
                               content={<NeonTooltip />}
                               wrapperStyle={{ zIndex: 9999 }}
@@ -374,13 +383,13 @@ export default function TableAnalytics({
                     </div>
 
                     {/* Timeline */}
-                    <div className="rounded-3xl bg-zinc-900/50 border border-white/10 p-5 lg:col-span-2 relative overflow-hidden min-w-0">
+                    <div className="rounded-3xl bg-zinc-900/50 border border-white/10 p-4 md:p-5 lg:col-span-2 relative overflow-hidden min-w-0">
                       <p className="text-[10px] uppercase tracking-widest text-zinc-500 font-black mb-4">
                         Timeline (Last {days} Days)
                       </p>
 
                       <div
-                        className={`${LINE_H} w-full min-w-0 overflow-hidden`}
+                        className="relative w-full"
                         style={{ height: LINE_H_PX }}
                       >
                         <ResponsiveContainer
@@ -392,10 +401,10 @@ export default function TableAnalytics({
                           <LineChart
                             data={data.timeline}
                             margin={{
-                              top: 8,
-                              right: isMobile ? 8 : 12,
-                              bottom: 8,
-                              left: isMobile ? -8 : 0,
+                              top: 10,
+                              right: isMobile ? 10 : 12,
+                              bottom: 10,
+                              left: 0,
                             }}
                           >
                             <CartesianGrid
@@ -403,7 +412,11 @@ export default function TableAnalytics({
                               stroke="rgba(255,255,255,0.10)"
                             />
                             <XAxis dataKey="day" hide />
-                            <YAxis allowDecimals={false} tick={axisTick} />
+                            <YAxis
+                              allowDecimals={false}
+                              tick={axisTick}
+                              width={yAxisWidth}
+                            />
                             <Tooltip
                               content={<NeonTooltip />}
                               wrapperStyle={{ zIndex: 9999 }}
@@ -412,21 +425,21 @@ export default function TableAnalytics({
                               type="monotone"
                               dataKey="created"
                               stroke="#a1a1aa"
-                              strokeWidth={2}
+                              strokeWidth={3}
                               dot={false}
                             />
                             <Line
                               type="monotone"
                               dataKey="landed"
                               stroke="#10b981"
-                              strokeWidth={2}
+                              strokeWidth={3}
                               dot={false}
                             />
                             <Line
                               type="monotone"
                               dataKey="rugged"
                               stroke="#ef4444"
-                              strokeWidth={2}
+                              strokeWidth={3}
                               dot={false}
                             />
                           </LineChart>
@@ -435,14 +448,14 @@ export default function TableAnalytics({
                     </div>
                   </div>
 
-                  {/* Chain bar */}
-                  <div className="rounded-3xl bg-zinc-900/50 border border-white/10 p-5 relative overflow-hidden min-w-0">
+                  {/* Top Chains */}
+                  <div className="rounded-3xl bg-zinc-900/50 border border-white/10 p-4 md:p-5 relative overflow-hidden min-w-0">
                     <p className="text-[10px] uppercase tracking-widest text-zinc-500 font-black mb-4">
                       Top Chains (Filtered)
                     </p>
 
                     <div
-                      className={`${BAR_H} w-full min-w-0 overflow-hidden`}
+                      className="relative w-full"
                       style={{ height: BAR_H_PX }}
                     >
                       <ResponsiveContainer
@@ -451,39 +464,67 @@ export default function TableAnalytics({
                         minWidth={1}
                         minHeight={1}
                       >
-                        <BarChart
-                          data={data.byChain}
-                          barCategoryGap={isMobile ? 10 : 18}
-                          margin={{
-                            top: 8,
-                            right: isMobile ? 8 : 12,
-                            bottom: isMobile ? 28 : 18,
-                            left: isMobile ? -8 : 0,
-                          }}
-                        >
-                          <CartesianGrid
-                            strokeDasharray="3 3"
-                            stroke="rgba(255,255,255,0.10)"
-                          />
-                          <XAxis
-                            dataKey="chain"
-                            interval={0}
-                            tick={axisTick}
-                            angle={isMobile ? -18 : 0}
-                            textAnchor={isMobile ? "end" : "middle"}
-                            height={isMobile ? 36 : 30}
-                          />
-                          <YAxis allowDecimals={false} tick={axisTick} />
-                          <Tooltip
-                            content={<NeonTooltip />}
-                            wrapperStyle={{ zIndex: 9999 }}
-                          />
-                          <Bar
-                            dataKey="count"
-                            fill="#22c55e"
-                            radius={[10, 10, 2, 2]}
-                          />
-                        </BarChart>
+                        {isMobile ? (
+                          // ✅ Mobile: horizontal bars (lebih kebaca & gede)
+                          <BarChart
+                            data={data.byChain}
+                            layout="vertical"
+                            margin={{ top: 8, right: 12, bottom: 8, left: 8 }}
+                          >
+                            <CartesianGrid
+                              strokeDasharray="3 3"
+                              stroke="rgba(255,255,255,0.10)"
+                            />
+                            <XAxis
+                              type="number"
+                              allowDecimals={false}
+                              tick={axisTick}
+                            />
+                            <YAxis
+                              type="category"
+                              dataKey="chain"
+                              tick={axisTick}
+                              width={72}
+                            />
+                            <Tooltip
+                              content={<NeonTooltip />}
+                              wrapperStyle={{ zIndex: 9999 }}
+                            />
+                            <Bar
+                              dataKey="count"
+                              fill="#22c55e"
+                              radius={[10, 10, 10, 10]}
+                              barSize={22}
+                            />
+                          </BarChart>
+                        ) : (
+                          // Desktop: normal
+                          <BarChart
+                            data={data.byChain}
+                            barCategoryGap={18}
+                            margin={{ top: 8, right: 12, bottom: 18, left: 0 }}
+                          >
+                            <CartesianGrid
+                              strokeDasharray="3 3"
+                              stroke="rgba(255,255,255,0.10)"
+                            />
+                            <XAxis dataKey="chain" tick={axisTick} />
+                            <YAxis
+                              allowDecimals={false}
+                              tick={axisTick}
+                              width={40}
+                            />
+                            <Tooltip
+                              content={<NeonTooltip />}
+                              wrapperStyle={{ zIndex: 9999 }}
+                            />
+                            <Bar
+                              dataKey="count"
+                              fill="#22c55e"
+                              radius={[10, 10, 2, 2]}
+                            />
+                          </BarChart>
+                        )}
                       </ResponsiveContainer>
                     </div>
                   </div>
@@ -526,10 +567,14 @@ function Stat({
   label,
   value,
   accent,
+  className,
+  valueClassName,
 }: {
   label: string;
   value: React.ReactNode;
   accent?: "emerald" | "red";
+  className?: string;
+  valueClassName?: string;
 }) {
   const accentCls =
     accent === "emerald"
@@ -540,15 +585,21 @@ function Stat({
 
   return (
     <div
-      className={[
+      className={cx(
         "rounded-2xl bg-zinc-900/60 border border-white/10 p-4 min-w-0 overflow-hidden",
         accentCls,
-      ].join(" ")}
+        className,
+      )}
     >
       <p className="text-[10px] uppercase tracking-widest text-zinc-500 font-black">
         {label}
       </p>
-      <div className="mt-2 text-xl text-zinc-100 font-black font-[var(--font-display)] truncate">
+      <div
+        className={cx(
+          "mt-2 text-xl text-zinc-100 font-black font-[var(--font-display)]",
+          valueClassName,
+        )}
+      >
         {value}
       </div>
     </div>
