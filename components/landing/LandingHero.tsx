@@ -557,55 +557,16 @@ export default function LandingPage({ isAuthed }: { isAuthed: boolean }) {
       <section id="faq" className="relative">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 pb-24">
           <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-6 sm:p-8">
-            <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1.05fr_0.95fr] lg:items-start">
-              {/* LEFT: Accordion */}
+            <div className="grid grid-cols-1 gap-8 lg:grid-cols-[0.95fr_1.05fr] lg:items-start">
+              {/* LEFT: Copywriting panel */}
               <motion.div
                 initial={{ opacity: 0, y: 14 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, amount: 0.25 }}
                 transition={{ duration: 0.55, ease: easeOut }}
-                className="order-2 lg:order-1"
-              >
-                <FaqAccordion
-                  items={[
-                    {
-                      q: "Is my data private?",
-                      a: "Yes. Your data is isolated per user account through Google sign-in. You only see your own dashboard entries.",
-                    },
-                    {
-                      q: "Do I need a spreadsheet anymore?",
-                      a: "No. The dashboard replaces the messy sheet workflow by keeping targets, wallets, socials, and notes structured in one place.",
-                    },
-                    {
-                      q: "Can I track outcomes like landed or rugged?",
-                      a: "Yes. You can record outcomes so your history stays reviewable. This makes it easier to learn what actually worked.",
-                    },
-                    {
-                      q: "Can I search across everything quickly?",
-                      a: "Yes. Search is built to find targets by name, chain, wallet, handles, and notes. It is designed for speed.",
-                    },
-                    {
-                      q: "Is it mobile friendly?",
-                      a: "Yes. The layout is responsive and the navigation adapts for small screens, so you can update status quickly.",
-                    },
-                    {
-                      q: "What is the best way to use it daily?",
-                      a: "Add targets when you discover them, update status while you execute, and record outcomes once they are clear. The routine stays consistent, the targets change.",
-                    },
-                  ]}
-                />
-              </motion.div>
-
-              {/* RIGHT: Copywriting panel (fills the empty area) */}
-              <motion.div
-                initial={{ opacity: 0, y: 14 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, amount: 0.25 }}
-                transition={{ duration: 0.55, ease: easeOut }}
-                className="order-1 lg:order-2"
+                className="order-1"
               >
                 <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-black/20 p-6 sm:p-7">
-                  {/* subtle glow */}
                   <div className="pointer-events-none absolute -top-24 -right-24 h-[320px] w-[320px] rounded-full bg-emerald-500/10 blur-[90px]" />
                   <div className="pointer-events-none absolute -bottom-24 -left-24 h-[320px] w-[320px] rounded-full bg-sky-500/10 blur-[90px]" />
 
@@ -626,9 +587,9 @@ export default function LandingPage({ isAuthed }: { isAuthed: boolean }) {
                   </p>
 
                   <p className="relative mt-3 text-pretty text-[13px] font-bold leading-relaxed text-zinc-400">
-                    The most common reason people miss airdrops is not effort.
-                    It is missing context. This keeps chain, wallet, handles,
-                    notes, and outcomes together so decisions stay clean.
+                    The most common reason people miss airdrops is missing
+                    context. This keeps chain, wallet, handles, notes, and
+                    outcomes together so decisions stay clean.
                   </p>
 
                   <div className="relative mt-6 space-y-3">
@@ -665,6 +626,44 @@ export default function LandingPage({ isAuthed }: { isAuthed: boolean }) {
                     />
                   </div>
                 </div>
+              </motion.div>
+
+              {/* RIGHT: Accordion */}
+              <motion.div
+                initial={{ opacity: 0, y: 14 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, amount: 0.25 }}
+                transition={{ duration: 0.55, ease: easeOut }}
+                className="order-2"
+              >
+                <FaqAccordion
+                  items={[
+                    {
+                      q: "Is my data private?",
+                      a: "Yes. Your data is isolated per user account through Google sign-in. You only see your own dashboard entries.",
+                    },
+                    {
+                      q: "Do I need a spreadsheet anymore?",
+                      a: "No. The dashboard replaces the messy sheet workflow by keeping targets, wallets, socials, and notes structured in one place.",
+                    },
+                    {
+                      q: "Can I track outcomes like landed or rugged?",
+                      a: "Yes. You can record outcomes so your history stays reviewable. This makes it easier to learn what actually worked.",
+                    },
+                    {
+                      q: "Can I search across everything quickly?",
+                      a: "Yes. Search is built to find targets by name, chain, wallet, handles, and notes. It is designed for speed.",
+                    },
+                    {
+                      q: "Is it mobile friendly?",
+                      a: "Yes. The layout is responsive and the navigation adapts for small screens, so you can update status quickly.",
+                    },
+                    {
+                      q: "What is the best way to use it daily?",
+                      a: "Add targets when you discover them, update status while you execute, and record outcomes once they are clear. The routine stays consistent, the targets change.",
+                    },
+                  ]}
+                />
               </motion.div>
             </div>
           </div>

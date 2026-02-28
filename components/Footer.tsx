@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import GithubStarButton from "@/components/footer/GithubStarButton";
 import SocialHubButton from "@/components/footer/SocialHubButton";
 import SocialTooltipBar from "@/components/footer/SocialTooltipBar";
+import LegalGlowButton from "@/components/footer/LegalGlowButton";
 
 export default function Footer() {
   const year = useMemo(() => new Date().getFullYear(), []);
@@ -49,6 +50,14 @@ export default function Footer() {
               <p className="text-[11px] font-black uppercase tracking-widest text-zinc-500">
                 Crafted by <span className="text-emerald-400">0x5zen</span>
               </p>
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                <LegalGlowButton
+                  href="/privacy"
+                  text="Privacy"
+                  accent="emerald"
+                />
+                <LegalGlowButton href="/terms" text="Terms" accent="sky" />
+              </div>
             </div>
 
             {/* right: socials top + buttons bottom (rata kanan) */}
@@ -83,13 +92,16 @@ export default function Footer() {
           </div>
 
           {/* bottom */}
-          <div className="mt-8 flex flex-col gap-2 border-t border-white/5 pt-6 md:flex-row md:items-center md:justify-between">
+          <div className="mt-8 flex flex-col gap-3 border-t border-white/5 pt-6 md:flex-row md:items-center md:justify-between">
             <p className="text-[10px] font-black uppercase tracking-widest text-zinc-600">
               © {year} 0x5zen • Airdrop Logbook
             </p>
-            <p className="text-[10px] font-black uppercase tracking-widest text-zinc-600">
-              Build First . Log Fast . Stay Ops-mode
-            </p>
+
+            <div className="flex flex-col gap-2 md:items-end">
+              <p className="text-[10px] font-black uppercase tracking-widest text-zinc-600">
+                Build First . Log Fast . Stay Ops-mode
+              </p>
+            </div>
           </div>
         </div>
       </motion.div>
